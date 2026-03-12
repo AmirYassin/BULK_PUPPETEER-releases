@@ -1,3 +1,4 @@
+![Interactive 3D Logo](docs/assets/liquid_silver_logo.png)
 # BULK_PUPPETEER
 **The Ultimate macOS Task Orchestrator & Gemini Swarm Engine (v3.5.1)**
 
@@ -27,7 +28,7 @@ Double-click the App from your `/Applications` folder.
 
 ### 1. The macOS Menu Bar
 The daemon binds directly into the macOS WindowServer using the raw AppKit frameworks.
-![Menu Bar Interface](docs/assets/menu_bar_placeholder.png)
+![Menu Bar Interface]
 
 *   **Global Swarm Controls:** Click it to cleanly "Pause" or "Resume" all active tasks to instantly free up your CPU.
 *   **Authentication:** Click **"Copy Session Token"**. This uses native macOS `pbcopy` to inject your secure enclave key directly into your clipboard (a notification banner will pop up to confirm).
@@ -41,8 +42,8 @@ Click "Open Command Center" from the Menu Bar, or navigate to `http://127.0.0.1:
 *   **The Dark Mode PTY:** Watch your tasks execute in real-time with full ANSI-color support.
 *   **Command Palette:** Press `/` anywhere on the dashboard to pull up the instant orchestration search bar.
 
-### 3. The "Liquid Silver" 3D Identity
-![Interactive 3D Logo](docs/assets/liquid_silver_logo.png)
+
+
 
 ---
 
