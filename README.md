@@ -1,6 +1,6 @@
 ![Interactive 3D Logo](docs/assets/liquid_silver_logo.png)
 # BULK_PUPPETEER
-**The Ultimate macOS Task Orchestrator & Gemini Swarm Engine (v3.5.1)**
+**The Ultimate macOS Task Orchestrator & Gemini Swarm Engine (v3.5.4)**
 
 ---
 
@@ -28,7 +28,6 @@ Double-click the App from your `/Applications` folder.
 
 ### 1. The macOS Menu Bar
 The daemon binds directly into the macOS WindowServer using the raw AppKit frameworks.
-![Menu Bar Interface]
 
 *   **Global Swarm Controls:** Click it to cleanly "Pause" or "Resume" all active tasks to instantly free up your CPU.
 *   **Authentication:** Click **"Copy Session Token"**. This uses native macOS `pbcopy` to inject your secure enclave key directly into your clipboard (a notification banner will pop up to confirm).
@@ -41,9 +40,6 @@ Click "Open Command Center" from the Menu Bar, or navigate to `http://127.0.0.1:
 *   Paste your Session Token to unlock the dashboard.
 *   **The Dark Mode PTY:** Watch your tasks execute in real-time with full ANSI-color support.
 *   **Command Palette:** Press `/` anywhere on the dashboard to pull up the instant orchestration search bar.
-
-
-
 
 ---
 
@@ -64,7 +60,7 @@ All traffic between the CLI and the daemon is AES-128-CBC encrypted, mathematica
 | Command | Arguments | Purpose |
 | :--- | :--- | :--- |
 | `status` | None | Fetches the global DAG topology, concurrency limits, and active task states. |
-| `add` | `<task_id> <prompt> [--cwd <path>] [--deps <csv>]` | Injects a new Gemini AI agent into the swarm. |
+| `add` | `<task_id> <prompt> [--cwd <path>] [--deps <csv>]` | Injects a new Gemini AI agent into the swarm. Features **Dynamic Context Injection**: natively inherits your shell's current working directory (or `--cwd`), and intelligently preserves recursive `.gemini` session history. |
 | `kill` | `<task_id>` | Terminates a specific task process group via `SIGKILL`. |
 | `logs` | `<task_id>` | Establishes a secure bi-directional WebSocket PTY to interact with the task. |
 | `get-workers`| None | Retrieves the current CPU concurrency limits. |
@@ -88,21 +84,25 @@ swarm-cli set-workers 4
 ```
 
 **3. Spawn the AI Swarm:**
-*(The new `v3.5.1` CLI autonomously injects your terminal's current working directory, so the agents execute exactly where you are standing!)*
+*(The CLI autonomously injects your terminal's current working directory, so the agents execute exactly where you are standing! Furthermore, because the `-r` flag is dynamically applied to preserve `.gemini` history, you do not need to worry about manually passing context. Simply think of spawning a task as "forking" your current terminal context.)*
 ```bash
+# Spawn independent agents
 swarm-cli add DATA_BOT_A "write a python script named 'a.py' that prints Hello"
 swarm-cli add DATA_BOT_B "write a python script named 'b.py' that prints World"
+
+# Spawn a dependent agent that waits for A and B to finish
+swarm-cli add DATA_BOT_C "verify that running a.py and b.py results in Hello World" --deps DATA_BOT_A,DATA_BOT_B
 ```
 
 **4. Stream the Output Securely:**
 *(Attach your terminal directly to the active PTY to watch the AI think)*
 ```bash
-swarm-cli logs DATA_BOT_A
+swarm-cli logs DATA_BOT_C
 ```
 
 **5. Annihilate the Task:**
 ```bash
-swarm-cli kill DATA_BOT_A
+swarm-cli kill DATA_BOT_C
 ```
 
 ---
