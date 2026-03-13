@@ -7,7 +7,7 @@
 ## 1. Introduction & Philosophy
 **BULK_PUPPETEER** is a native, Apple Silicon orchestration daemon. 
 
-Instead of letting background processes bog down your terminal or silently fail, BULK_PUPPETEER runs quietly in your macOS Menu Bar as a headless `FastAPI` control plane. It acts as a highly secure "Execution Enclave", allowing you to dynamically throttle your CPU concurrency, manage task dependencies), and stream real-time Pseudo-Terminal (PTY) outputs—all without compromising your system's security to external network sniffers.
+Instead of letting background processes bog down your terminal or silently fail, BULK_PUPPETEER runs quietly in your macOS Menu Bar as a headless `FastAPI` control plane. It acts as a highly secure "Execution Enclave", allowing you to dynamically throttle your CPU concurrency, manage task dependencies, and stream real-time Pseudo-Terminal (PTY) outputs—all without compromising your system's security to external network sniffers.
 
 ---
 
