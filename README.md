@@ -292,6 +292,7 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 | `status` | — | Swarm topology and task states |
 | `add` | `<id> <prompt> [--cwd] [--deps] [--model] [--model-variant]` | Spawn a task (with dynamic context injection) |
 | `kill` | `<id>` | Terminate a task via SIGKILL |
+| `resume` | `<id>` | Resume a dormant/killed task |
 | `logs` | `<id>` | Attach to live PTY stream (last 2000 lines circular buffer) |
 | `get-workers` | — | Show concurrency limit |
 | `set-workers` | `<N>` | Set max concurrent tasks (restarts engine — kills active tasks) |
