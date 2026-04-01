@@ -192,6 +192,14 @@ swarm-cli server-logs --tail 200
 
 ---
 
+## What's New in v3.9.0 (The SOTA iTerm & Rate-Limit Upgrade)
+
+- **iTerm-in-Browser UI:** Complete aesthetic overhaul of the web terminal. The console now features a strict native monospace stack, dark-mode 12px rounded modal styling, and rigorous scroll-lock tolerances that replicate a native macOS iTerm2 experience directly inside the browser.
+- **Concurrency Burst Mitigation (Execution Jitter):** The backend Execution Engine now employs a mathematically randomized `1.0-8.0s` startup jitter. When unleashing a swarm of agents simultaneously, this architectural mechanism cleanly staggers subprocess initialization, mathematically circumventing strict LLM API Request-Per-Second (429) rate limits.
+- **JSON WebSocket Multiplexing:** Refactored the frontend-to-backend pipeline to use a scalable JSON message protocol (`{"type": "input", "data": "..."}` and `{"type": "resize"}`), breaking away from legacy raw-text buffering.
+- **SIGWINCH Window Resizing:** The terminal viewport now actively synchronizes its dimensions with the underlying macOS kernel. Resizing the browser actively redraws terminal apps (like `top` or `vim`) in real-time.
+- **TrueColor (256) PTY Injection:** The engine now strictly enforces `TERM=xterm-256color` and explicitly allocates a master/slave pseudo-terminal, ensuring that high-fidelity UI apps like the Gemini CLI render flawlessly.
+
 ## What's New in v3.8.0
 
 - **DORMANT state** — dynamically added tasks now start in `DORMANT` instead of overloading `KILLED`. Clear semantic distinction between "not yet started" and "user terminated"
