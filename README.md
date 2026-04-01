@@ -3,12 +3,12 @@
 </p>
 
 <h1 align="center">BULK_PUPPETEER</h1>
-<p align="center"><strong>v3.7.0</strong> — Task Orchestration Daemon for macOS Apple Silicon</p>
+<p align="center"><strong>v3.8.0</strong> — Task Orchestration Daemon for macOS Apple Silicon</p>
 
 ---
 
 > [!CAUTION]
-> **SPAWNED TASKS ARE KILLED AUTOMATICALLY, PLEASE RESUME TO ACTIVATE!**
+> **SPAWNED TASKS START IN DORMANT STATE — RESUME TO ACTIVATE!**
 
 ---
 
@@ -49,15 +49,6 @@ The system provides:
 - Python 3.11+
 - Xcode Command Line Tools (`xcode-select --install`)
 
-### From DMG (macOS App)
-
-1. Download the latest `.dmg` from [Releases](https://github.com/AmirYassin/BULK_PUPPETEER-releases/releases)
-2. Drag `BULK_PUPPETEER.app` to `/Applications`
-3. Launch the app — on first run, it automatically injects a `bulk-cli` alias into your `~/.zshrc` and `~/.bash_profile`
-4. Restart your terminal (or run `source ~/.zshrc`)
-
-The CLI is available as `bulk-cli` when installed via DMG.
-
 ### From Source
 
 ```bash
@@ -68,6 +59,15 @@ cd BULK_PUPPETEER
 
 The CLI is available as `swarm-cli` when running from source.
 
+### From DMG (macOS App)
+
+1. Download the latest `.dmg` from [Releases](https://github.com/AmirYassin/BULK_PUPPETEER/releases)
+2. Drag `BULK_PUPPETEER.app` to `/Applications`
+3. Launch the app — on first run, it automatically injects a `bulk-cli` alias into your `~/.zshrc` and `~/.bash_profile`
+4. Restart your terminal (or run `source ~/.zshrc`)
+
+The CLI is available as `bulk-cli` when installed via DMG.
+
 > [!NOTE]
 > **CLI naming:** `swarm-cli` (from source) and `bulk-cli` (from DMG) are the same tool. All examples below use `swarm-cli` — substitute `bulk-cli` if you installed via DMG.
 
@@ -76,15 +76,39 @@ The CLI is available as `swarm-cli` when running from source.
 > [!WARNING]
 > **`$PATH` Isolation:** BULK_PUPPETEER runs as a native macOS AppKit daemon and **does not inherit your terminal's `$PATH`** (e.g., `~/.zshrc` or `/opt/homebrew/bin`).
 
-To ensure the Swarm Engine can locate your CLI tools (`gemini`, `claude`, `aider`, `python`, `node`, etc.), create system-level symlinks:
+To ensure the Swarm Engine can locate your CLI tools (`gemini`, `python`, `node`, etc.), create system-level symlinks:
 
 ```bash
 sudo ln -s /opt/homebrew/bin/gemini /usr/local/bin/gemini
-sudo ln -s /opt/homebrew/bin/claude /usr/local/bin/claude
-sudo ln -s /opt/homebrew/bin/aider /usr/local/bin/aider
 ```
 
 Click **"Restart Daemon"** in the Menu Bar after creating symlinks for them to take effect.
+
+### Build macOS App (DMG)
+
+```bash
+# Dev build (fast, no LTO)
+./build_release.sh
+
+# Production build (full LTO + notarization)
+PRODUCTION=1 ./build_release.sh
+```
+
+Output: `dist/BULK_PUPPETEER_v3.8.0.dmg`
+
+### Run Tests
+
+```bash
+# Full suite (backend + Playwright E2E)
+/usr/bin/python3 run_tests.py
+
+# Backend only
+/usr/bin/python3 -m pytest -v -p no:playwright -n auto --timeout=40 \
+  --ignore=TESTS/AUTO_UI --ignore=TESTS/backend/test_macos_integration.py TESTS/backend/
+
+# E2E only
+/usr/bin/python3 -m pytest -v -n auto --timeout=40 TESTS/AUTO_UI/
+```
 
 ---
 
@@ -115,27 +139,21 @@ export SWARM_TOKEN=$(cat .daemon.token)
 ### 3. Spawn Tasks
 
 > [!CAUTION]
-> **Spawned tasks start in a killed state. You MUST resume them to activate!**
+> **Spawned tasks start in DORMANT state. You MUST resume them to activate!** Use `--run` to start immediately.
 
 ```bash
 # Set max concurrent tasks (default: 3)
 swarm-cli set-workers 4
 
-# Spawn independent agents (default: Gemini)
+# Spawn independent agents (dormant by default — must resume)
 swarm-cli add DATA_BOT_A "write a python script named 'a.py' that prints Hello"
 swarm-cli add DATA_BOT_B "write a python script named 'b.py' that prints World"
 
-# Spawn a dependent agent (waits for A and B)
-swarm-cli add DATA_BOT_C "verify that a.py and b.py produce Hello World" --deps DATA_BOT_A,DATA_BOT_B
+# Spawn and immediately start (--run skips DORMANT state)
+swarm-cli add DATA_BOT_C "verify that a.py and b.py produce Hello World" --deps DATA_BOT_A,DATA_BOT_B --run
 
 # Spawn an agent using Claude with the Sonnet variant
 swarm-cli add CODE_REVIEW "review the changes in src/" --model claude --model-variant sonnet
-
-# Spawn an agent using a specific Gemini model
-swarm-cli add ANALYZER "analyze the codebase" --model gemini --model-variant gemini-2.5-pro
-
-# Spawn an Aider agent
-swarm-cli add REFACTOR "refactor the auth module" --model aider --model-variant gemini/gemini-2.5-pro
 
 # Spawn a raw shell command (no model wrapping)
 swarm-cli add HEALTH_CHECK "echo 'all good'" --model raw
@@ -200,7 +218,19 @@ swarm-cli server-logs --tail 200
 
 ---
 
-## What's New in v3.7.0
+## What's New in v3.8.0
+
+- **DORMANT state** — dynamically added tasks now start in `DORMANT` instead of overloading `KILLED`. Clear semantic distinction between "not yet started" and "user terminated"
+- **`--run` flag** — `swarm-cli add <id> <prompt> --run` starts the task immediately, skipping DORMANT state
+- **Hot-resize concurrency** — `set-workers` swaps the semaphore in-place. Running tasks are no longer killed and the manifest is no longer reloaded
+- **Shell escaping hardening** — `_escape_for_shell()` now handles `!` (bash history expansion), `\n`, `\r`, and null bytes
+- **PTY EIO resilience** — graceful handling of `OSError(EIO)` when the PTY slave closes before the read loop
+- **Exit code hints** — failed tasks with exit code 127 or 126 now include diagnostic hints ("command not found", "permission denied") in their log buffer
+- **`SWARM_TOKEN` env var** — CLI checks `SWARM_TOKEN` environment variable before falling back to `.daemon.token` file
+- **`--stable-token`** — daemon flag to reuse existing `.daemon.token` across restarts (avoids breaking existing agent connections)
+- **DORMANT badge** — Web Dashboard renders DORMANT tasks with a teal status badge
+
+### What's New in v3.7.0
 
 - **Full CLI coverage** — all 16 REST API endpoints now have `swarm-cli` commands (was 8)
 - **`swarm-cli resume`** — resume dormant/killed tasks from the CLI (previously dashboard-only)
@@ -228,7 +258,7 @@ The engine uses an `asyncio.Semaphore` to limit how many tasks run simultaneousl
 # View current limit
 swarm-cli get-workers
 
-# Change it dynamically
+# Hot-resize (running tasks are NOT killed — takes effect for new task scheduling)
 swarm-cli set-workers 8
 ```
 
@@ -237,11 +267,14 @@ swarm-cli set-workers 8
 Every task moves through a Finite State Machine with validated transitions:
 
 ```
-BLOCKED → QUEUED → IN_PROGRESS → COMPLETED
-                              → FAILED
-                              → KILLED
-COMPLETED / FAILED / KILLED → QUEUED (restart/retry)
+DORMANT → QUEUED → IN_PROGRESS → COMPLETED
+                               → FAILED
+                               → KILLED
+BLOCKED → QUEUED (when dependencies complete)
+COMPLETED / FAILED / KILLED / DORMANT → QUEUED (restart/retry)
 ```
+
+> **DORMANT** is the default state for dynamically added tasks. It indicates the task is registered but not yet scheduled. Use `resume` or add with `--run` to activate.
 
 Illegal state jumps raise `IllegalStateTransitionError`.
 
@@ -269,15 +302,15 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 |--------|----------|---------|
 | `GET` | `/api/tasks` | List all tasks with their current state |
 | `GET` | `/api/status` | Global swarm status (concurrency, pause state, task count) |
-| `POST` | `/api/tasks/add` | Inject a new task into the execution graph (dormant) |
+| `POST` | `/api/tasks/add` | Inject a new task (DORMANT by default, or auto-start with `auto_start: true`) |
 | `POST` | `/api/tasks/resume/{id}` | Resume/restart a single dormant task |
 | `POST` | `/api/tasks/kill/{id}` | Send SIGKILL to a specific task |
 | `POST` | `/api/tasks/kill_all` | Emergency kill all active tasks |
 | `POST` | `/api/tasks/pause_all` | Globally pause the swarm |
 | `POST` | `/api/tasks/resume_swarm` | Globally resume the swarm |
-| `POST` | `/api/tasks/resume_all` | Resume all tasks in a dormant state (FAILED/COMPLETED/KILLED) |
+| `POST` | `/api/tasks/resume_all` | Resume all dormant tasks (DORMANT/FAILED/COMPLETED/KILLED) |
 | `POST` | `/api/tasks/{id}/stdin` | Inject raw text into a task's stdin |
-| `POST` | `/api/config/concurrency` | Update worker concurrency limit (restarts engine) |
+| `POST` | `/api/config/concurrency` | Hot-resize worker concurrency (no restart, running tasks unaffected) |
 | `PUT` | `/api/tasks/{id}` | Replace the configuration of a dormant task |
 | `DELETE` | `/api/tasks/{id}` | Purge a dormant task from memory |
 | `GET` | `/api/tasks/{id}/logs` | Retrieve the 2000-line output buffer for a task |
@@ -323,20 +356,20 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 | Command | Arguments | Purpose |
 |---------|-----------|---------|
 | `status` | — | Swarm topology and task states |
-| `add` | `<id> <prompt> [--cwd] [--deps] [--model] [--model-variant]` | Spawn a task (with dynamic context injection) |
+| `add` | `<id> <prompt> [--cwd] [--deps] [--model] [--model-variant] [--run]` | Spawn a task (DORMANT by default; `--run` starts immediately) |
 | `kill` | `<id>` | Terminate a task via SIGKILL |
 | `resume` | `<id>` | Resume a dormant/killed task |
 | `kill-all` | — | Emergency kill all active tasks |
 | `pause` | — | Globally pause the swarm |
 | `resume-swarm` | — | Globally resume the swarm |
-| `resume-all` | — | Resume all dormant tasks (KILLED/FAILED/COMPLETED) |
+| `resume-all` | — | Resume all dormant tasks (DORMANT/KILLED/FAILED/COMPLETED) |
 | `stdin` | `<id> <text>` | Send raw text to a task's stdin |
 | `edit` | `<id> <json>` | Replace config of a dormant task |
 | `delete` | `<id>` | Purge a dormant task from memory |
 | `server-logs` | `[--tail N]` | Tail backend diagnostic logs |
 | `logs` | `<id>` | Attach to live PTY stream (last 2000 lines circular buffer) |
 | `get-workers` | — | Show concurrency limit |
-| `set-workers` | `<N>` | Set max concurrent tasks (restarts engine — kills active tasks) |
+| `set-workers` | `<N>` | Hot-resize max concurrent tasks (running tasks unaffected) |
 
 ### Supported Models
 
@@ -389,8 +422,6 @@ The daemon integrates with macOS WindowServer via AppKit:
 
 - **Real-time PTY streaming** with scroll-lock for rapid output
 - **Command Palette** — press `/` for keyboard-driven orchestration
-- **Model Selector** — grouped dropdown with 15 model options + custom variant input
-- **Model Badges** — color-coded task cards showing which AI model each task uses
 - **3D Logo** — interactive physics-based marionette rendered in WebGL
 
 ---
@@ -399,18 +430,17 @@ The daemon integrates with macOS WindowServer via AppKit:
 
 ```
 src/bulk_puppeteer/core/
-├── engine.py          # ExecutionEngine, TaskManager, polymorphic task hierarchy
-├── api.py             # FastAPI app factory, REST + WebSocket, ASGI middleware
-├── models.py          # Pydantic schemas (TaskDef, TaskState, TaskStatus)
-├── config.py          # Immutable SwarmConfig (single source of truth)
-├── fsm.py             # TaskStateMachine (legal transition adjacency list)
-├── dag.py             # SwarmDAG (Kahn's Algorithm cycle detection)
-├── events.py          # TelemetryBus (Observer pattern, decouples I/O from WS)
-├── command_builder.py # Model registry + build_command() — maps model names to CLI templates
-├── tray.py            # macOS Menu Bar (rumps + AppKit)
-├── react.py           # ReActAgent (LLM-driven Reason+Act loop)
-├── exceptions.py      # OrchestratorError → DAGCycleError, TaskExecutionError, PtyAllocationError
-└── constants.py       # Shared constants
+├── engine.py       # ExecutionEngine, TaskManager, polymorphic task hierarchy
+├── api.py          # FastAPI app factory, REST + WebSocket, ASGI middleware
+├── models.py       # Pydantic schemas (TaskDef, TaskState, TaskStatus)
+├── config.py       # Immutable SwarmConfig (single source of truth)
+├── fsm.py          # TaskStateMachine (legal transition adjacency list)
+├── dag.py          # SwarmDAG (Kahn's Algorithm cycle detection)
+├── telemetry.py    # TelemetryBus (Observer pattern, decouples I/O from WS)
+├── tray.py         # macOS Menu Bar (rumps + AppKit)
+├── react.py        # ReActAgent (LLM-driven Reason+Act loop)
+├── exceptions.py   # OrchestratorError → DAGCycleError, TaskExecutionError, PtyAllocationError
+└── constants.py    # Shared constants
 ```
 
 ### Execution Flow
@@ -449,17 +479,22 @@ swarm-cli --port 9090 add BUILD "run the build" --deps LINT,TEST
 
 ## Troubleshooting
 
-### Why is my task instantly showing as `KILLED`?
+### Why is my task showing as `DORMANT`?
 
-The `KILLED` status means the task's process is not currently running. This happens in three scenarios:
+`DORMANT` is the default state for dynamically added tasks. It means the task is registered but not yet scheduled.
 
 | Scenario | Cause | Fix |
 |----------|-------|-----|
-| **Default state** | You just added the task — it's waiting for you to resume | Hit **Resume** in the Dashboard or via the API |
-| **Manual kill** | You stopped it with `swarm-cli kill` | Re-add and resume the task |
-| **Subprocess boot failure** | The daemon can't find the executable (e.g., `gemini`) | Create a `/usr/local/bin` symlink and restart the daemon (see [Environment Setup](#post-install-environment-setup)) |
+| **Default state** | You added the task without `--run` | Hit **Resume** in the Dashboard, or `swarm-cli resume <id>`, or re-add with `--run` |
+| **Intentional hold** | Task is parked for later activation | Resume when ready |
 
-If a task instantly returns to `KILLED` after resume with empty logs, it's almost always the `$PATH` isolation issue.
+### Why does my task fail immediately after resume?
+
+| Scenario | Cause | Fix |
+|----------|-------|-----|
+| **Exit code 127** | Command not found — the daemon can't locate the executable | Create a `/usr/local/bin` symlink and restart the daemon (see [Environment Setup](#post-install-environment-setup)) |
+| **Exit code 126** | Permission denied on the executable | `chmod +x` the binary |
+| **Subprocess boot failure** | The daemon can't find the binary (e.g., `gemini`) | Check `swarm-cli logs <id>` for the exit hint |
 
 ### Connection Refused / 500 Error
 
@@ -471,7 +506,7 @@ If a task instantly returns to `KILLED` after resume with empty logs, it's almos
 
 - **Symptom:** `[ERROR] API Request Failed: Unauthorized`
 - **Cause:** The `.daemon.token` in your working directory doesn't match the daemon's active token, or the file is missing.
-- **Fix:** Run `swarm-cli` from the same directory where the daemon was launched, or pass the correct token with `--token`.
+- **Fix:** Run `swarm-cli` from the same directory where the daemon was launched, pass the correct token with `--token`, or set `export SWARM_TOKEN=$(cat .daemon.token)`. Use `--stable-token` on daemon start to reuse the same token across restarts.
 
 ### Task Not Found
 
@@ -484,3 +519,16 @@ If a task instantly returns to `KILLED` after resume with empty logs, it's almos
 ## License
 
 Copyright (c) 2026 Amir Yassin. All rights reserved.
+
+---
+
+```
+>>>>>CHANGES<<<<<
+- [Role]: Researcher/Doc Auditor
+- [Action]: Fixed Quick Start resume curl — changed PUT /api/tasks/{id}?action=resume to POST /api/tasks/resume/{id} to match actual api.py route. (v2026-04-01)
+- [Action]: Fixed FSM state diagram — removed fictional WAITING state; correct states are BLOCKED, QUEUED, IN_PROGRESS, COMPLETED, FAILED, KILLED per fsm.py. (v2026-04-01)
+- [Action]: Expanded Security Architecture section — added CORS restriction to localhost note, noted bearer token is not logged. (v2026-04-01)
+- [Action]: Replaced abbreviated REST API table with complete accurate endpoint list matching all routes registered in api.py (15 endpoints). (v2026-04-01)
+- [Role]: Developer (Claude)
+- [Action]: v3.8.0 — Updated all documentation for 9 peer review friction points: DORMANT state, --run flag, hot-resize concurrency, SWARM_TOKEN, --stable-token, exit code hints, PTY EIO, shell escaping. Added What's New v3.8.0 section. (v2026-04-01)
+```
