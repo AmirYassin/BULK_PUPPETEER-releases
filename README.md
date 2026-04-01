@@ -293,6 +293,14 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 | `add` | `<id> <prompt> [--cwd] [--deps] [--model] [--model-variant]` | Spawn a task (with dynamic context injection) |
 | `kill` | `<id>` | Terminate a task via SIGKILL |
 | `resume` | `<id>` | Resume a dormant/killed task |
+| `kill-all` | — | Emergency kill all active tasks |
+| `pause` | — | Globally pause the swarm |
+| `resume-swarm` | — | Globally resume the swarm |
+| `resume-all` | — | Resume all dormant tasks (KILLED/FAILED/COMPLETED) |
+| `stdin` | `<id> <text>` | Send raw text to a task's stdin |
+| `edit` | `<id> <json>` | Replace config of a dormant task |
+| `delete` | `<id>` | Purge a dormant task from memory |
+| `server-logs` | `[--tail N]` | Tail backend diagnostic logs |
 | `logs` | `<id>` | Attach to live PTY stream (last 2000 lines circular buffer) |
 | `get-workers` | — | Show concurrency limit |
 | `set-workers` | `<N>` | Set max concurrent tasks (restarts engine — kills active tasks) |
