@@ -148,7 +148,11 @@ The CLI automatically inherits your shell's working directory and preserves `.ge
 Tasks are intentionally spawned in a dormant state to prevent sudden CPU overloads. You must trigger them to start:
 
 - **Option A (Web Dashboard):** Open `http://127.0.0.1:8080` and click **Resume** on the task
-- **Option B (REST API):**
+- **Option B (CLI):**
+  ```bash
+  swarm-cli resume DATA_BOT_A
+  ```
+- **Option C (REST API):**
   ```bash
   curl -X POST -H "Authorization: Bearer $SWARM_TOKEN" \
     "http://127.0.0.1:8080/api/tasks/resume/DATA_BOT_A"
@@ -168,6 +172,24 @@ swarm-cli status --json
 
 # Kill a task
 swarm-cli kill DATA_BOT_C
+
+# Pause the entire swarm
+swarm-cli pause
+
+# Resume the swarm
+swarm-cli resume-swarm
+
+# Resume all dormant tasks
+swarm-cli resume-all
+
+# Send input to a task's stdin
+swarm-cli stdin MY_TASK "yes"
+
+# Delete a completed task
+swarm-cli delete OLD_TASK
+
+# View backend logs
+swarm-cli server-logs --tail 200
 ```
 
 ### 6. Stop the Daemon
@@ -175,6 +197,16 @@ swarm-cli kill DATA_BOT_C
 ```bash
 ./stop_daemon.sh
 ```
+
+---
+
+## What's New in v3.7.0
+
+- **Full CLI coverage** — all 16 REST API endpoints now have `swarm-cli` commands (was 8)
+- **`swarm-cli resume`** — resume dormant/killed tasks from the CLI (previously dashboard-only)
+- **Multi-model support** — `--model` and `--model-variant` flags on `swarm-cli add` (gemini, claude, aider, raw)
+- **8 new commands** — `kill-all`, `pause`, `resume-swarm`, `resume-all`, `stdin`, `edit`, `delete`, `server-logs`
+- **Security hardening** — expanded model variant validation, strict Claude allowlist
 
 ---
 
@@ -284,6 +316,7 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 | `--port` | `8080` | Daemon port (`1024-65535`) |
 | `--token` | Auto from `.daemon.token` | Session token for auth + E2EE key derivation |
 | `--json` | `false` | Machine-readable JSON output (for scripts and LLM agents) |
+| `--headless` | `false` | Run without macOS Menu Bar (for CI/CD and headless servers) |
 
 ### Commands
 
