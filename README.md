@@ -61,7 +61,7 @@ The CLI is available as `swarm-cli` when running from source.
 
 ### From DMG (macOS App)
 
-1. Download the latest `.dmg` from [Releases](https://github.com/AmirYassin/BULK_PUPPETEER/releases)
+1. Download the latest `.dmg` from [Releases](https://github.com/AmirYassin/BULK_PUPPETEER-releases/releases)
 2. Drag `BULK_PUPPETEER.app` to `/Applications`
 3. Launch the app — on first run, it automatically injects a `bulk-cli` alias into your `~/.zshrc` and `~/.bash_profile`
 4. Restart your terminal (or run `source ~/.zshrc`)
@@ -83,32 +83,6 @@ sudo ln -s /opt/homebrew/bin/gemini /usr/local/bin/gemini
 ```
 
 Click **"Restart Daemon"** in the Menu Bar after creating symlinks for them to take effect.
-
-### Build macOS App (DMG)
-
-```bash
-# Dev build (fast, no LTO)
-./build_release.sh
-
-# Production build (full LTO + notarization)
-PRODUCTION=1 ./build_release.sh
-```
-
-Output: `dist/BULK_PUPPETEER_v3.8.0.dmg`
-
-### Run Tests
-
-```bash
-# Full suite (backend + Playwright E2E)
-/usr/bin/python3 run_tests.py
-
-# Backend only
-/usr/bin/python3 -m pytest -v -p no:playwright -n auto --timeout=40 \
-  --ignore=TESTS/AUTO_UI --ignore=TESTS/backend/test_macos_integration.py TESTS/backend/
-
-# E2E only
-/usr/bin/python3 -m pytest -v -n auto --timeout=40 TESTS/AUTO_UI/
-```
 
 ---
 
@@ -520,15 +494,3 @@ swarm-cli --port 9090 add BUILD "run the build" --deps LINT,TEST
 
 Copyright (c) 2026 Amir Yassin. All rights reserved.
 
----
-
-```
->>>>>CHANGES<<<<<
-- [Role]: Researcher/Doc Auditor
-- [Action]: Fixed Quick Start resume curl — changed PUT /api/tasks/{id}?action=resume to POST /api/tasks/resume/{id} to match actual api.py route. (v2026-04-01)
-- [Action]: Fixed FSM state diagram — removed fictional WAITING state; correct states are BLOCKED, QUEUED, IN_PROGRESS, COMPLETED, FAILED, KILLED per fsm.py. (v2026-04-01)
-- [Action]: Expanded Security Architecture section — added CORS restriction to localhost note, noted bearer token is not logged. (v2026-04-01)
-- [Action]: Replaced abbreviated REST API table with complete accurate endpoint list matching all routes registered in api.py (15 endpoints). (v2026-04-01)
-- [Role]: Developer (Claude)
-- [Action]: v3.8.0 — Updated all documentation for 9 peer review friction points: DORMANT state, --run flag, hot-resize concurrency, SWARM_TOKEN, --stable-token, exit code hints, PTY EIO, shell escaping. Added What's New v3.8.0 section. (v2026-04-01)
-```
