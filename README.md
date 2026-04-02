@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">BULK_PUPPETEER</h1>
-<p align="center"><strong>v3.9.0</strong> — Task Orchestration Daemon for macOS Apple Silicon</p>
+<p align="center"><strong>v3.8.0</strong> — Task Orchestration Daemon for macOS Apple Silicon</p>
 
 ---
 
@@ -61,7 +61,7 @@ The CLI is available as `swarm-cli` when running from source.
 
 ### From DMG (macOS App)
 
-1. Download the latest `.dmg` from [Releases](https://github.com/AmirYassin/BULK_PUPPETEER-releases/releases)
+1. Download the latest `.dmg` from [Releases](https://github.com/AmirYassin/BULK_PUPPETEER/releases)
 2. Drag `BULK_PUPPETEER.app` to `/Applications`
 3. Launch the app — on first run, it automatically injects a `bulk-cli` alias into your `~/.zshrc` and `~/.bash_profile`
 4. Restart your terminal (or run `source ~/.zshrc`)
@@ -83,6 +83,32 @@ sudo ln -s /opt/homebrew/bin/gemini /usr/local/bin/gemini
 ```
 
 Click **"Restart Daemon"** in the Menu Bar after creating symlinks for them to take effect.
+
+### Build macOS App (DMG)
+
+```bash
+# Dev build (fast, no LTO)
+./build_release.sh
+
+# Production build (full LTO + notarization)
+PRODUCTION=1 ./build_release.sh
+```
+
+Output: `dist/BULK_PUPPETEER_v3.8.0.dmg`
+
+### Run Tests
+
+```bash
+# Full suite (backend + Playwright E2E)
+/usr/bin/python3 run_tests.py
+
+# Backend only
+/usr/bin/python3 -m pytest -v -p no:playwright -n auto --timeout=40 \
+  --ignore=TESTS/AUTO_UI --ignore=TESTS/backend/test_macos_integration.py TESTS/backend/
+
+# E2E only
+/usr/bin/python3 -m pytest -v -n auto --timeout=40 TESTS/AUTO_UI/
+```
 
 ---
 
@@ -192,7 +218,7 @@ swarm-cli server-logs --tail 200
 
 ---
 
-## What's New in v3.9.0 (The SOTA iTerm & Rate-Limit Upgrade)
+## What's New in v4.0.0 (The SOTA iTerm & Rate-Limit Upgrade)
 
 - **iTerm-in-Browser UI:** Complete aesthetic overhaul of the web terminal. The console now features a strict native monospace stack, dark-mode 12px rounded modal styling, and rigorous scroll-lock tolerances that replicate a native macOS iTerm2 experience directly inside the browser.
 - **Concurrency Burst Mitigation (Execution Jitter):** The backend Execution Engine now employs a mathematically randomized `1.0-8.0s` startup jitter. When unleashing a swarm of agents simultaneously, this architectural mechanism cleanly staggers subprocess initialization, mathematically circumventing strict LLM API Request-Per-Second (429) rate limits.
@@ -200,7 +226,7 @@ swarm-cli server-logs --tail 200
 - **SIGWINCH Window Resizing:** The terminal viewport now actively synchronizes its dimensions with the underlying macOS kernel. Resizing the browser actively redraws terminal apps (like `top` or `vim`) in real-time.
 - **TrueColor (256) PTY Injection:** The engine now strictly enforces `TERM=xterm-256color` and explicitly allocates a master/slave pseudo-terminal, ensuring that high-fidelity UI apps like the Gemini CLI render flawlessly.
 
-## What's New in v3.9.0
+## What's New in v3.8.0
 
 - **DORMANT state** — dynamically added tasks now start in `DORMANT` instead of overloading `KILLED`. Clear semantic distinction between "not yet started" and "user terminated"
 - **`--run` flag** — `swarm-cli add <id> <prompt> --run` starts the task immediately, skipping DORMANT state
@@ -332,7 +358,7 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 |----------|---------|---------|
 | `--port` | `8080` | Daemon port (`1024-65535`) |
 | `--token` | Auto from `.daemon.token` | Session token for auth + E2EE key derivation |
-| `--json` | `false` | Machine-readable JSON output for scripts, agents, and parsing tools (e.g., `bulk-cli status --json | jq ".tasks"`)  |
+| `--json` | `false` | Machine-readable JSON output for scripts, agents, and parsing tools (e.g., `bulk-cli status --json | jq '.tasks'`). |
 | `--headless` | `false` | Run without macOS Menu Bar (for CI/CD and headless servers) |
 
 ### Commands
@@ -340,7 +366,7 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 | Command | Arguments | Purpose |
 |---------|-----------|---------|
 | `status` | — | Swarm topology and task states |
-| `add` | `<id> <prompt> [--cwd] [--deps] [--model] [--model-variant] [--run]` | Spawn a task (DORMANT by default; `--run` starts immediately) |
+| `add` | `<id> <prompt> [--cwd] [--deps] [--model] [--model-variant] [--profile] [--run]` | Spawn a task (DORMANT by default; `--run` starts immediately). Assign personas via `--profile`. |
 | `kill` | `<id>` | Terminate a task via SIGKILL |
 | `resume` | `<id>` | Resume a dormant/killed task |
 | `kill-all` | — | Emergency kill all active tasks |
@@ -504,3 +530,15 @@ swarm-cli --port 9090 add BUILD "run the build" --deps LINT,TEST
 
 Copyright (c) 2026 Amir Yassin. All rights reserved.
 
+---
+
+```
+>>>>>CHANGES<<<<<
+- [Role]: Researcher/Doc Auditor
+- [Action]: Fixed Quick Start resume curl — changed PUT /api/tasks/{id}?action=resume to POST /api/tasks/resume/{id} to match actual api.py route. (v2026-04-01)
+- [Action]: Fixed FSM state diagram — removed fictional WAITING state; correct states are BLOCKED, QUEUED, IN_PROGRESS, COMPLETED, FAILED, KILLED per fsm.py. (v2026-04-01)
+- [Action]: Expanded Security Architecture section — added CORS restriction to localhost note, noted bearer token is not logged. (v2026-04-01)
+- [Action]: Replaced abbreviated REST API table with complete accurate endpoint list matching all routes registered in api.py (15 endpoints). (v2026-04-01)
+- [Role]: Developer (Claude)
+- [Action]: v3.8.0 — Updated all documentation for 9 peer review friction points: DORMANT state, --run flag, hot-resize concurrency, SWARM_TOKEN, --stable-token, exit code hints, PTY EIO, shell escaping. Added What's New v3.8.0 section. (v2026-04-01)
+```
