@@ -420,7 +420,7 @@ src/bulk_puppeteer/core/
 ├── config.py       # Immutable SwarmConfig (single source of truth)
 ├── fsm.py          # TaskStateMachine (legal transition adjacency list)
 ├── dag.py          # SwarmDAG (Kahn's Algorithm cycle detection)
-├── telemetry.py    # TelemetryBus (Observer pattern, decouples I/O from WS)
+├── events.py    # EventBus (Observer pattern, decouples I/O from WS)
 ├── tray.py         # macOS Menu Bar (rumps + AppKit)
 ├── react.py        # ReActAgent (LLM-driven Reason+Act loop)
 ├── exceptions.py   # OrchestratorError → DAGCycleError, TaskExecutionError, PtyAllocationError
@@ -433,7 +433,7 @@ src/bulk_puppeteer/core/
 2. `ExecutionEngine.load_manifest()` parses JSON manifest into `AbstractTask` objects, registers in `SwarmDAG`
 3. `ExecutionEngine.start_all()` spawns one `asyncio.Task` per job
 4. Each task: waits for DAG deps, acquires semaphore, executes via PTY or standard shell
-5. All I/O routed through `TelemetryBus` to WebSocket subscribers
+5. All I/O routed through `EventBus` to WebSocket subscribers
 6. State transitions validated by `TaskStateMachine` — illegal jumps raise exceptions
 
 ### Task Types
