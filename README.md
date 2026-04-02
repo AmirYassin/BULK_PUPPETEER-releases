@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">BULK_PUPPETEER</h1>
-<p align="center"><strong>v3.8.0</strong> — Task Orchestration Daemon for macOS Apple Silicon</p>
+<p align="center"><strong>v3.9.0</strong> — Task Orchestration Daemon for macOS Apple Silicon</p>
 
 ---
 
@@ -200,7 +200,7 @@ swarm-cli server-logs --tail 200
 - **SIGWINCH Window Resizing:** The terminal viewport now actively synchronizes its dimensions with the underlying macOS kernel. Resizing the browser actively redraws terminal apps (like `top` or `vim`) in real-time.
 - **TrueColor (256) PTY Injection:** The engine now strictly enforces `TERM=xterm-256color` and explicitly allocates a master/slave pseudo-terminal, ensuring that high-fidelity UI apps like the Gemini CLI render flawlessly.
 
-## What's New in v3.8.0
+## What's New in v3.9.0
 
 - **DORMANT state** — dynamically added tasks now start in `DORMANT` instead of overloading `KILLED`. Clear semantic distinction between "not yet started" and "user terminated"
 - **`--run` flag** — `swarm-cli add <id> <prompt> --run` starts the task immediately, skipping DORMANT state
@@ -235,6 +235,8 @@ Tasks are not executed sequentially — they run dynamically based on dependency
 ### Worker Concurrency
 
 The engine uses an `asyncio.Semaphore` to limit how many tasks run simultaneously. **Default: 3 workers.** If 5 tasks are unblocked at once, 3 run immediately and 2 remain `QUEUED` until a worker slot opens.
+
+To prevent high-concurrency swarms from tripping LLM API burst rate limits (e.g., `429 Too Many Requests`), the Execution Engine employs an automated `1.0-8.0s` startup jitter. This cleanly staggers the `fork/exec` calls across the time window, keeping burst spikes below the server's radar.
 
 ```bash
 # View current limit
@@ -330,7 +332,7 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 |----------|---------|---------|
 | `--port` | `8080` | Daemon port (`1024-65535`) |
 | `--token` | Auto from `.daemon.token` | Session token for auth + E2EE key derivation |
-| `--json` | `false` | Machine-readable JSON output (for scripts and LLM agents) |
+| `--json` | `false` | Machine-readable JSON output for scripts, agents, and parsing tools (e.g., `bulk-cli status --json | jq ".tasks"`)  |
 | `--headless` | `false` | Run without macOS Menu Bar (for CI/CD and headless servers) |
 
 ### Commands
