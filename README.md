@@ -904,10 +904,3 @@ swarm-cli --port 9090 add BUILD "run the build" --deps LINT,TEST
 Copyright (c) 2026 Amir Yassin. All rights reserved.
 
 ---
-
->>>>>CHANGES<<<<<
-- [Role]: Researcher/Doc Auditor — Fixed Quick Start resume curl, FSM state diagram, Security Architecture, REST API table. (v2026-04-01)
-- [Role]: Developer (Claude) — v3.8.0 doc pass: DORMANT state, --run, hot-resize, SWARM_TOKEN, --stable-token, exit code hints, PTY EIO, shell escaping. (v2026-04-01)
-- [Role]: Developer (Claude) — v4.4.3 doc pass: version/DMG update, What's New v4.4.3, First-Run Setup, Menu Bar items, build commands, paths.py, troubleshooting entries. (v2026-04-10)
-- [Role]: Developer (Claude) — v4.4.3 final pass: fixed Python 3.11+ → 3.9+; added WhatsApp Bridge Integration section (setup, QR linking, command table, sub-agent spawning, chat history note). (v2026-04-10)
-- [Role]: Developer (Claude) — v4.4.3 comprehensive pass: added Multi-Model Support, Agent Profiles, Named Teams, Task Tags, PTY section; Shell Injection Prevention, Workspace Root, Orchestrator Preflight to Security; full Configuration table; Daemon CLI flags; full 28-command WA table (teams, PR, profile, errors, git); OrchestratorTrayApp full menu table; WA bridge dead-letter queue; WA troubleshooting entries; updated ToC. (v2026-04-10)
