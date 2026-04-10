@@ -19,6 +19,7 @@
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
 - [Security Architecture](#security-architecture)
+- [Configuration](#configuration)
 - [API Reference](#api-reference)
 - [CLI Reference](#cli-reference)
 - [WhatsApp Bridge Integration](#whatsapp-bridge-integration)
@@ -39,6 +40,7 @@ The system provides:
 - An **E2EE Command Line Interface** for task orchestration
 - A **Web Dashboard** with real-time PTY streaming and a command palette
 - A **WhatsApp Bridge** — route messages to a persistent Gemini AI orchestrator that can spawn and manage sub-agents via natural language
+- **Named multi-agent Teams** — logical groups of agents that can be started/stopped as a unit from WhatsApp or the API
 - An interactive **physics-based 3D logo** rendered via Three.js
 
 ---
@@ -310,6 +312,85 @@ COMPLETED / FAILED / KILLED / DORMANT → QUEUED (restart/retry)
 
 Illegal state jumps raise `IllegalStateTransitionError`.
 
+### Multi-Model Support
+
+The `--model` flag selects the AI backend. The `--model-variant` flag specifies the exact checkpoint.
+
+| Model | `--model` value | Example variants |
+|-------|-----------------|-----------------|
+| Google Gemini | `gemini` | `gemini-2.5-flash`, `gemini-2.5-pro`, `flash`, `pro` |
+| Anthropic Claude | `claude` | `sonnet`, `opus`, `haiku`, `claude-sonnet-4-6`, `claude-opus-4-6` |
+| Aider | `aider` | `gemini/gemini-2.5-pro`, `claude-sonnet-4-6`, `gpt-4o` |
+| Raw shell | `raw` | _(none)_ |
+
+```bash
+swarm-cli add TASK1 "Fix the bug in auth.py" --model gemini --model-variant gemini-2.5-flash --run
+swarm-cli add TASK2 "Review TASK1 output" --model claude --model-variant sonnet --deps TASK1 --run
+```
+
+> **Model string validation:** Gemini and Aider accept any model string their respective CLIs support. Claude validates against a strict allowlist because Claude Code is strict about model name format.
+
+### Agent Profiles
+
+Profiles are pre-configured YAML personas stored in `~/Library/Application Support/BULK_PUPPETEER/profiles/`. They set the agent's system prompt, allowed tools, and behavior. Pass a profile name with `--profile`.
+
+```bash
+swarm-cli add RESEARCH "Investigate the codebase" --profile veteran-researcher --run
+swarm-cli add ARCH "Design the solution" --profile veteran-architect --deps RESEARCH --run
+swarm-cli add ORCH "Orchestrate responses via WhatsApp" --profile veteran-wa-orchestrator --run
+```
+
+**Built-in profiles:** `veteran-architect`, `veteran-researcher`, `senior-dev`, `debugger`, `security-auditor`, `veteran-wa-orchestrator`, and more.
+
+Profile YAML format (create custom profiles):
+```yaml
+name: my-profile
+description: "Custom agent persona"
+model: gemini-2.5-pro
+system_prompt: |
+  You are a specialized agent for ...
+tools:
+  - read_file
+  - write_file
+  - bash
+```
+
+### Named Teams
+
+Teams are logical groups of agents that can be started or stopped together. Define a team as a set of task IDs with a shared team name. Teams are managed via the WhatsApp bridge or the orchestrator.
+
+```bash
+# Start a team named "infra-audit"
+# (via WhatsApp: send "start infra-audit")
+
+# Stop a team
+# (via WhatsApp: send "kill infra-audit")
+```
+
+See [WhatsApp Supported Commands](#supported-commands) for the full team command list.
+
+### Task Tags and Filtering
+
+Tags are free-form labels attached to tasks for grouping and filtering. Pass a comma-separated list with `--tags`.
+
+```bash
+swarm-cli add T1 "run linter" --tags "ci,lint" --run
+swarm-cli add T2 "run tests" --tags "ci,test" --run
+```
+
+In the Web Dashboard, a tag filter bar appears automatically when any task has tags. Click a tag badge to filter the task grid to only tasks with that tag.
+
+### PTY Interactive Terminal
+
+Tasks that require a real terminal (interactive shells, `vim`, `less`, `gemini` CLI, etc.) use PTY mode. Set `"use_pty": true` in the task config. The Web Dashboard streams full TrueColor `xterm-256color` output and supports terminal resize via SIGWINCH.
+
+```bash
+# PTY is automatically enabled for gemini and claude models.
+# For raw or aider tasks that need a terminal, add use_pty explicitly:
+swarm-cli add INTERACTIVE "python3 -i script.py" --model raw --run
+# Then use the Web Dashboard terminal to interact with it.
+```
+
 ---
 
 ## Security Architecture
@@ -322,6 +403,66 @@ All local communication is secured with a three-layer protocol:
 
 The bearer token is never logged. Even local loopback traffic intercepted by other processes is unreadable.
 
+### WebSocket Authentication
+
+WebSocket connections authenticate via query parameter: `?token=<token>`.
+
+The `/whatsapp/webhook` inbound endpoint requires either a valid Bearer token **or** a request originating from localhost (`verify_local_or_token`). Unauthenticated webhook posts from external addresses are rejected with HTTP 401.
+
+### Shell Injection Prevention (`_validate_command`)
+
+Before executing any task, `_validate_command()` scans the command string for dangerous shell metacharacters: `;`, `|`, `&`, `$`, `` ` ``, `\n`, `\r`. Commands containing any of these characters are rejected with a `ValueError` before a subprocess is spawned. This applies to both `StandardShellTask` and `PtyInteractiveTask`.
+
+### Workspace Root Path Validation
+
+The `SwarmConfig.workspace_root` field defines a spatial security boundary. When a task's `cwd` is set, the API resolves both the workspace root and the target path via `os.path.realpath()` and verifies that the target is inside the workspace using `os.path.commonpath()`. Symlink-based escape attempts are caught and rejected with HTTP 400 (`Spatial Escape Detected`).
+
+### Orchestrator Preflight Checks
+
+Before the orchestrator's `poll_loop` activates, `run_agent_settings_preflight()` validates that `AgentSettings.email` and `AgentSettings.phone` are present and well-formed. On success it sets `SwarmConfig.orchestrator_ready = True`. The macOS Menu Bar settings dialog shows a live `✓` / `○` indicator reflecting this state.
+
+---
+
+## Configuration
+
+The daemon accepts the following `SwarmConfig` fields, settable via CLI flags or programmatically:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `port` | `int` | `8080` | API bind port |
+| `host` | `str` | `127.0.0.1` | API bind address |
+| `concurrency` | `int` | `3` | Worker pool capacity (hot-resizable via `set-workers`) |
+| `manifest_path` | `str` | `sample_tasks.json` | Path to the task JSON manifest |
+| `log_file` | `str` | `server.log` | Path to the primary diagnostic log |
+| `token` | `str` | _(generated)_ | Bearer token for authentication; auto-generated by `start_daemon.sh` |
+| `verbose` | `bool` | `False` | Enable debug-level logging |
+| `enable_state_cache` | `bool` | `True` | Enable local state caching |
+| `state_cache_file` | `str` | `.com.apple.xpc.state` | Path to the local state cache file |
+| `workspace_root` | `str` | _(CWD)_ | Safe directory boundary for task execution |
+| `orchestrator_ready` | `bool` | `False` | Set to `True` by preflight checks when email/phone are valid |
+
+**Removed fields (do not use):** `enable_remote_optimization`, `garbage_collector`. These were removed in v4.x and are no longer accepted.
+
+### Log File Location
+
+When running as a `.app` bundle (installed via DMG), stdout is suppressed by macOS. All logs are written to:
+
+```
+~/Library/Application Support/BULK_PUPPETEER/server.log
+```
+
+When running from source, `server.log` is written to the current working directory by default.
+
+### Gemini API Key Resolution
+
+The daemon resolves the Gemini API key in this order (first hit wins):
+
+1. `GEMINI_API_KEY` environment variable
+2. `GOOGLE_API_KEY` environment variable
+3. `~/Library/Application Support/BULK_PUPPETEER/.gemini_key` file (mode `0600`)
+
+If an env var and the saved file key are both present but differ, a `WARNING` is logged at startup and the tray menu bar shows `⚠ Mismatch`. A native macOS notification also fires. The env var always wins; to stop it from shadowing the file key, unset it (`unset GEMINI_API_KEY`) and restart the daemon.
+
 ---
 
 ## API Reference
@@ -330,23 +471,30 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 
 ### REST
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| `GET` | `/api/tasks` | List all tasks with their current state |
-| `GET` | `/api/status` | Global swarm status (concurrency, pause state, task count) |
-| `POST` | `/api/tasks/add` | Inject a new task (DORMANT by default, or auto-start with `auto_start: true`) |
-| `POST` | `/api/tasks/resume/{id}` | Resume/restart a single dormant task |
-| `POST` | `/api/tasks/kill/{id}` | Send SIGKILL to a specific task |
-| `POST` | `/api/tasks/kill_all` | Emergency kill all active tasks |
-| `POST` | `/api/tasks/pause_all` | Globally pause the swarm |
-| `POST` | `/api/tasks/resume_swarm` | Globally resume the swarm |
-| `POST` | `/api/tasks/resume_all` | Resume all dormant tasks (DORMANT/FAILED/COMPLETED/KILLED) |
-| `POST` | `/api/tasks/{id}/stdin` | Inject raw text into a task's stdin |
-| `POST` | `/api/config/concurrency` | Hot-resize worker concurrency (no restart, running tasks unaffected) |
-| `PUT` | `/api/tasks/{id}` | Replace the configuration of a dormant task |
-| `DELETE` | `/api/tasks/{id}` | Purge a dormant task from memory |
-| `GET` | `/api/tasks/{id}/logs` | Retrieve the 2000-line output buffer for a task |
-| `GET` | `/api/server_logs` | Tail the backend diagnostic log file |
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| `GET` | `/api/tasks` | Token | List all tasks with their current state |
+| `GET` | `/api/status` | Token | Global swarm status (concurrency, pause state, task count) |
+| `POST` | `/api/tasks/add` | Token | Inject a new task (DORMANT by default, or auto-start with `auto_start: true`) |
+| `POST` | `/api/tasks/resume/{id}` | Token | Resume/restart a single dormant task |
+| `POST` | `/api/tasks/kill/{id}` | Token | Send SIGKILL to a specific task |
+| `POST` | `/api/tasks/kill_all` | Token | Emergency kill all active tasks |
+| `POST` | `/api/tasks/pause_all` | Token | Globally pause the swarm |
+| `POST` | `/api/tasks/resume_swarm` | Token | Globally resume the swarm |
+| `POST` | `/api/tasks/resume_all` | Token | Resume all dormant tasks (DORMANT/FAILED/COMPLETED/KILLED) |
+| `POST` | `/api/tasks/{id}/stdin` | Token | Inject raw text into a task's stdin |
+| `POST` | `/api/config/concurrency` | Token | Hot-resize worker concurrency (no restart, running tasks unaffected) |
+| `PUT` | `/api/tasks/{id}` | Token | Replace the configuration of a dormant task |
+| `DELETE` | `/api/tasks/{id}` | Token | Purge a dormant task from memory |
+| `GET` | `/api/tasks/{id}/logs` | Token | Retrieve the 2000-line output buffer for a task |
+| `GET` | `/api/server_logs` | Token | Tail the backend diagnostic log file |
+| `GET` | `/api/test_files` | Token | List all test files |
+| `GET` | `/api/wa/status` | None | WhatsApp bridge status |
+| `POST` | `/api/wa/start` | Token | Start WhatsApp bridge |
+| `POST` | `/api/wa/stop` | Token | Stop WhatsApp bridge |
+| `GET` | `/api/wa/events` | None | WhatsApp bridge SSE event stream |
+| `GET` | `/wa/qr` | None | WhatsApp QR code page |
+| `POST` | `/whatsapp/webhook` | Local or Token | Inbound WA webhook |
 
 ### Task Payload Schema
 
@@ -357,38 +505,79 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
   "cwd": "/opt/app",
   "env": {"PRODUCTION": "1"},
   "depends_on": ["LINT", "TEST"],
-  "use_pty": true
+  "use_pty": true,
+  "tags": ["ci", "build"],
+  "model": "gemini",
+  "model_variant": "gemini-2.5-flash",
+  "profile": "senior-dev"
 }
 ```
 
 ### WebSocket
 
-| Endpoint | Purpose |
-|----------|---------|
-| `ws://.../ws/console/{id}` | Bi-directional PTY channel (stdout/stderr + keystrokes) |
-| `ws://.../ws/server_logs` | Read-only daemon event stream |
+| Endpoint | Auth | Purpose |
+|----------|------|---------|
+| `ws://.../ws/console/{id}?token=<token>` | Token | Bi-directional PTY channel (stdout/stderr + keystrokes) |
+| `ws://.../ws/server_logs?token=<token>` | Token | Read-only daemon event stream |
 
 ---
 
 ## CLI Reference
 
+### Daemon (`bulk-puppeteer`)
+
+The daemon is started via `./start_daemon.sh` or directly as a Python module. All flags are optional; defaults are shown below.
+
+```
+bulk-puppeteer [OPTIONS]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--manifest` | str | `sample_tasks.json` | Path to the JSON task manifest loaded at startup. |
+| `--port` | int | `8080` | TCP port for the API server. |
+| `--workers` | int | `3` | Maximum number of concurrently executing tasks. |
+| `--token` | str | _(generated)_ | Bearer token for API auth. Auto-generated and written to `.daemon.token` if omitted. |
+| `--verbose` | flag | `false` | Enable DEBUG-level logging. |
+| `--headless` | flag | `false` | Run without the macOS AppKit Menu Bar. Required for CI/CD and Linux environments. |
+| `--stable-token` | flag | `false` | Reuse the existing `.daemon.token` if present instead of generating a new one on each start. |
+
+**Example invocations:**
+
+```bash
+# Default (Menu Bar + API on port 8080)
+./start_daemon.sh
+
+# Headless mode (CI/CD, no AppKit)
+python3 -m bulk_puppeteer --headless --port 8080
+
+# Custom manifest, more workers, reuse token
+python3 -m bulk_puppeteer --manifest tasks.json --workers 8 --stable-token
+
+# Verbose debug logging
+python3 -m bulk_puppeteer --verbose --headless
+```
+
+### Swarm CLI (`swarm-cli` / `bulk-cli`)
+
 > **Reminder:** Use `swarm-cli` (from source) or `bulk-cli` (from DMG). They are identical.
 
-### Global Arguments
+All commands require the daemon to be running. The token is auto-loaded from the `SWARM_TOKEN` environment variable or the `.daemon.token` file in the current working directory.
+
+#### Global Arguments
 
 | Argument | Default | Purpose |
 |----------|---------|---------|
 | `--port` | `8080` | Daemon port (`1024-65535`) |
-| `--token` | Auto from `.daemon.token` | Session token for auth + E2EE key derivation |
-| `--json` | `false` | Machine-readable JSON output for scripts, agents, and parsing tools (e.g., `bulk-cli status --json | jq '.tasks'`). |
-| `--headless` | `false` | Run without macOS Menu Bar (for CI/CD and headless servers) |
+| `--token` | Auto from `.daemon.token` or `$SWARM_TOKEN` | Session token for auth + E2EE key derivation |
+| `--json` | `false` | Machine-readable JSON output (e.g., `bulk-cli status --json \| jq '.tasks'`) |
 
-### Commands
+#### Commands
 
 | Command | Arguments | Purpose |
 |---------|-----------|---------|
 | `status` | — | Swarm topology and task states |
-| `add` | `<id> <prompt> [--cwd] [--deps] [--model] [--model-variant] [--profile] [--run]` | Spawn a task (DORMANT by default; `--run` starts immediately). Assign personas via `--profile`. |
+| `add` | `<id> <prompt> [flags]` | Spawn a task (DORMANT by default; `--run` starts immediately) |
 | `kill` | `<id>` | Terminate a task via SIGKILL |
 | `resume` | `<id>` | Resume a dormant/killed task |
 | `kill-all` | — | Emergency kill all active tasks |
@@ -403,18 +592,19 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 | `get-workers` | — | Show concurrency limit |
 | `set-workers` | `<N>` | Hot-resize max concurrent tasks (running tasks unaffected) |
 
-### Supported Models
+#### `add` Flags
 
-| Model | Binary | Variants | Description |
-|-------|--------|----------|-------------|
-| `gemini` (default) | `gemini` | Any Gemini API model ID (`gemini-2.5-flash`, `gemini-2.5-pro`, `flash`, `pro`, etc.) | Google Gemini CLI |
-| `claude` | `claude` | Strict allowlist: `sonnet`, `opus`, `haiku`, `sonnet[1m]`, `opus[1m]`, `opusplan`, plus specific full IDs (`claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5`, etc.) | Anthropic Claude Code |
-| `aider` | `aider` | Any LiteLLM model string (`gemini/gemini-2.5-pro`, `claude-sonnet-4-6`, `gpt-4o`, etc.) | AI pair programming |
-| `raw` | — | — | Raw shell command (no wrapping) |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--model` | `gemini` | AI backend: `gemini`, `claude`, `aider`, `raw` |
+| `--model-variant` | _(none)_ | Model checkpoint, e.g. `gemini-2.5-flash`, `sonnet` |
+| `--profile` | _(none)_ | Agent profile name (YAML persona from profiles directory) |
+| `--deps` | _(none)_ | Comma-separated upstream task IDs |
+| `--cwd` | current dir | Working directory for the task |
+| `--tags` | _(none)_ | Comma-separated tags, e.g. `research,prod` |
+| `--run` | `false` | Start the task immediately instead of leaving it DORMANT |
 
-> **Model string validation:** Gemini and Aider accept any model string their respective CLIs support — the orchestrator passes them through without an allowlist. Claude validates against a known model list because Claude Code is strict about model name format.
-
-### CLI Output Examples
+#### CLI Output Examples
 
 **Human-readable (default):**
 ```bash
@@ -453,6 +643,8 @@ Your WhatsApp → Bridge (Go binary) → BULK_PUPPETEER daemon → Gemini AI (ve
                                               WA reply → Your WhatsApp
 ```
 
+The bridge binary runs as a sidecar process managed by the daemon. Inbound WhatsApp messages are POSTed to `/whatsapp/webhook`. The `CommandParser` maps natural language messages to structured intents. The `YnManager` handles yes/no approval flows for human-in-the-loop gates.
+
 ### Setup
 
 **Step 1 — Set your phone number** (First-Run Setup if not done already)
@@ -477,36 +669,24 @@ Then open the QR page in your browser:
 http://127.0.0.1:8080/wa/qr
 ```
 
-Scan the QR code with WhatsApp on your phone (**Settings → Linked Devices → Link a Device**).
+Scan the QR code with WhatsApp on your phone (**Settings → Linked Devices → Link a Device**). The page automatically detects the "Successfully authenticated" marker from bridge stdout and shows a connected confirmation.
 
 **Step 4 — Send a message to yourself**
 
 Open WhatsApp, find your own contact ("You" or your phone number), and send any message. The AI will respond.
 
+```bash
+# Check bridge status at any time
+curl http://127.0.0.1:8080/api/wa/status
+```
+
 ### Chat History
 
 The orchestrator AI remembers your conversation within a session (up to 40 turns). History is automatically preserved across crash restarts. If you switch the AI model (`/model <name>`), history is cleared for a clean start.
 
-### Supported Commands
+### Dead-Letter Queue
 
-| Command | Description |
-|---------|-------------|
-| `status` / `s` | Show swarm status and active tasks |
-| `list` / `ls` | List all tasks with their states |
-| `pause` | Pause the entire swarm |
-| `resume` | Resume the swarm |
-| `/task add <cmd>` | Spawn a new shell task |
-| `/task kill <id>` | Kill a task |
-| `/task resume <id>` | Resume a dormant/killed task |
-| `/task delete <id>` | Remove a task |
-| `/task logs <id>` | Fetch task output |
-| `/task stdin <id> <text>` | Send text to a task's stdin |
-| `kill all` / `kill everything` | Kill all running tasks (prompts for confirmation) |
-| `yes` / `no` | Confirm or cancel a pending kill-all |
-| `help` / `?` | Show command reference |
-| `history` / `log` | Show recent orchestrator activity |
-| `/model <name>` | Switch AI model (e.g. `/model gemini-2.5-flash`) |
-| Any free-form text | Routes to the Gemini AI orchestrator |
+If the bridge is unreachable when the orchestrator tries to send a reply, the outbound message is written to a `dead_letter/` directory under the data directory rather than being silently dropped. Messages are retried on the next successful bridge reconnection.
 
 ### Spawning Sub-Agents from WhatsApp
 
@@ -516,26 +696,79 @@ The AI can spawn Gemini and Claude sub-agents on your behalf. Just ask in plain 
 
 The AI uses `swarm-cli` internally to create DAG tasks with the correct model, profile, and dependencies. Results are written to files and summarised in the WhatsApp reply.
 
+### Supported Commands
+
+The command parser accepts case-insensitive natural language. Common typos and synonyms are handled automatically.
+
+| Message | Action |
+|---------|--------|
+| `status` / `stats` / `s` | Report swarm status |
+| `tasks` / `task list` / `list` / `ls` | List all tasks |
+| `pause` | Pause the entire swarm |
+| `resume` | Resume the swarm |
+| `panic` / `emergency` / `abort` / `kill all` / `kill everything` | Kill all tasks immediately (prompts for confirmation) |
+| `help` / `?` | Show available commands |
+| `history` / `log` / `recent` | Show recent orchestrator activity |
+| `orchestrate` / `orch` | Trigger orchestration cycle |
+| `start <team_name>` / `spin up <team_name>` | Start a named agent team |
+| `kill <team_name>` / `stop <team_name>` | Stop a named agent team |
+| `pr list` | List open pull requests |
+| `pr review <N>` | Show details for PR #N |
+| `pr approve <N>` / `pr accept <N>` | Approve PR #N |
+| `pr reject <N>` / `pr deny <N>` | Reject PR #N |
+| `profile list` | List available agent profiles |
+| `profile <name>` | Create a new agent profile |
+| `errors` / `error list` | List registered errors |
+| `errors resolve <N>` / `fix error <N>` | Resolve error #N |
+| `git status` | Show git working-tree status |
+| `git log` | Show recent git commit log |
+| `approve` / `yes` | Approve the pending confirmation |
+| `reject` / `no` | Reject the pending confirmation |
+| `<N> yes` / `<N> no` | Answer a pending yes/no prompt scoped to task N |
+| `/task add <cmd>` | Spawn a new task |
+| `/task kill <id>` | Terminate task |
+| `/task resume <id>` | Restart task |
+| `/task delete <id>` | Remove task |
+| `/task stdin <id> <text>` | Send input to task |
+| `/task logs <id>` | Fetch logs for task |
+| `/model <name>` | Switch AI model (e.g. `/model gemini-2.5-flash`) |
+| Any free-form text | Routes to the Gemini AI orchestrator |
+
 ---
 
 ## User Interface
 
-### macOS Menu Bar
+### macOS Menu Bar (OrchestratorTrayApp)
 
-The daemon integrates with macOS WindowServer via AppKit:
-- **Pause/Resume All** — global task controls
-- **Copy Session Token** — copies to clipboard with native notification
-- **Set WhatsApp Number…** — saves your phone number to `.user_jid`; takes effect immediately, no restart needed
-- **Set Gemini API Key…** — stores your API key; detects mismatches between env var and saved file
-- **Restart Daemon** — clean `os.execv` process replacement
+The daemon integrates with macOS WindowServer via AppKit. Every action is available without opening a browser.
+
+| Menu Item | Action |
+|-----------|--------|
+| Status indicator | Live running/total task count; shows `(PAUSED)` when swarm is paused |
+| Open Command Center | Opens the Web Dashboard in Safari |
+| Copy Session Token | Copies the 64-char hex token to the clipboard with a native notification |
+| Pause / Resume Swarm | Toggles global execution |
+| Kill All Tasks | Broadcasts process termination to all tasks |
+| Settings | NSAlert dialog to set orchestrator phone/email; `✓`/`○` shows orchestrator preflight readiness |
+| Gemini Key: `<status>` | Shows current key state (`✅ env`, `✅ file`, `⚠ Not Set`, or `⚠ Mismatch`). Clicking opens the **Gemini Key Details** dialog with env/file fingerprints and an "Overwrite File With Env" button. |
+| Set Gemini API Key… | Prompts for a new key, validates it against the Gemini API, saves to `DATA_DIR/.gemini_key` (mode `0600`), and updates `os.environ["GEMINI_API_KEY"]` in-process. |
+| Set WhatsApp Number… | Saves phone number to `.user_jid`; takes effect immediately in-process, no restart needed |
+| Test Gemini Key | Validates the currently active key (env or file) and shows result in an NSAlert |
+| Clear Gemini Key | Deletes `DATA_DIR/.gemini_key` and pops both `GEMINI_API_KEY` and `GOOGLE_API_KEY` from the in-process environment |
+| Restart Daemon | `os.execv` clean restart; detects and kills port-conflicting processes first |
+| Check for Updates | Opens the GitHub Releases page |
+| Quit Daemon | Sends SIGINT for graceful FastAPI/PTY teardown |
 
 ### Web Dashboard
 
-![Web Dashboard](docs/assets/dashboard.png)
+Visit `http://127.0.0.1:8080` after launching the daemon.
 
-- **Real-time PTY streaming** with scroll-lock for rapid output
-- **Command Palette** — press `/` for keyboard-driven orchestration
-- **3D Logo** — interactive physics-based marionette rendered in WebGL
+- **Task Grid** — Live status cards with FSM state badges; click any card to open the PTY terminal
+- **Tag Filter Bar** — Appears when tasks have tags; click a tag to filter the grid
+- **Command Palette** — `/` shortcut for global actions (pause swarm, kill all, set workers)
+- **PTY Terminal** — Full `xterm-256color` TrueColor streaming with SIGWINCH resize support
+- **Real-time Updates** — WebSocket multiplexes output, resize events, and status changes
+- **3D Logo** — Interactive physics-based marionette rendered in WebGL
 
 ---
 
@@ -549,7 +782,7 @@ src/bulk_puppeteer/core/
 ├── config.py       # Immutable SwarmConfig (single source of truth)
 ├── fsm.py          # TaskStateMachine (legal transition adjacency list)
 ├── dag.py          # SwarmDAG (Kahn's Algorithm cycle detection)
-├── events.py    # EventBus (Observer pattern, decouples I/O from WS)
+├── events.py       # EventBus (Observer pattern, decouples I/O from WS)
 ├── tray.py         # macOS Menu Bar (rumps + AppKit)
 ├── react.py        # ReActAgent (LLM-driven Reason+Act loop)
 ├── paths.py        # Path resolver + certifi monkey-patch for .app bundle SSL
@@ -640,6 +873,22 @@ swarm-cli --port 9090 add BUILD "run the build" --deps LINT,TEST
 - **Cause:** The task ID doesn't exist in the active DAG.
 - **Fix:** Run `swarm-cli status` to see which task IDs are currently loaded.
 
+### WhatsApp Bridge Not Connecting
+
+- **Symptom:** QR page shows "Stream interrupted" or the bridge never reaches "authenticated".
+- **Cause:** Common causes: phone number not set, Gemini key not configured, or bridge binary not found in `$PATH`.
+- **Fix:**
+  1. Confirm your phone number is set: Menu Bar > **"Set WhatsApp Number…"**
+  2. Confirm Gemini key is configured: Menu Bar > **"Set Gemini API Key…"**
+  3. Check bridge status: `curl http://127.0.0.1:8080/api/wa/status`
+  4. Review daemon logs: `swarm-cli server-logs --tail 50`
+
+### Orchestrator Preflight Fails (`○` in Settings)
+
+- **Symptom:** Menu Bar Settings dialog shows `○` next to orchestrator readiness.
+- **Cause:** `AgentSettings.email` or `AgentSettings.phone` is missing or malformed.
+- **Fix:** Open Menu Bar > **Settings**, fill in a valid email and phone, then click Save.
+
 ---
 
 ## License
@@ -652,5 +901,5 @@ Copyright (c) 2026 Amir Yassin. All rights reserved.
 - [Role]: Researcher/Doc Auditor — Fixed Quick Start resume curl, FSM state diagram, Security Architecture, REST API table. (v2026-04-01)
 - [Role]: Developer (Claude) — v3.8.0 doc pass: DORMANT state, --run, hot-resize, SWARM_TOKEN, --stable-token, exit code hints, PTY EIO, shell escaping. (v2026-04-01)
 - [Role]: Developer (Claude) — v4.4.3 doc pass: version/DMG update, What's New v4.4.3, First-Run Setup, Menu Bar items, build commands, paths.py, troubleshooting entries. (v2026-04-10)
-- [Role]: Developer (Claude) — v4.4.3 final pass: fixed Python 3.11+ → 3.9+; added WhatsApp Bridge Integration section (setup, QR linking, command table, sub-agent spawning, chat history note); added WA to ToC and feature list. (v2026-04-10)
-
+- [Role]: Developer (Claude) — v4.4.3 final pass: fixed Python 3.11+ → 3.9+; added WhatsApp Bridge Integration section (setup, QR linking, command table, sub-agent spawning, chat history note). (v2026-04-10)
+- [Role]: Developer (Claude) — v4.4.3 comprehensive pass: added Multi-Model Support, Agent Profiles, Named Teams, Task Tags, PTY section; Shell Injection Prevention, Workspace Root, Orchestrator Preflight to Security; full Configuration table; Daemon CLI flags; full 28-command WA table (teams, PR, profile, errors, git); OrchestratorTrayApp full menu table; WA bridge dead-letter queue; WA troubleshooting entries; updated ToC. (v2026-04-10)
