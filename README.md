@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">BULK_PUPPETEER</h1>
-<p align="center"><strong>v3.8.0</strong> — Task Orchestration Daemon for macOS Apple Silicon</p>
+<p align="center"><strong>v4.4.3</strong> — Task Orchestration Daemon for macOS Apple Silicon</p>
 
 ---
 
@@ -49,6 +49,18 @@ The system provides:
 - Python 3.11+
 - Xcode Command Line Tools (`xcode-select --install`)
 
+### From DMG (macOS App)
+
+1. Download [`BULK_PUPPETEER_v4.4.3.dmg`](https://github.com/AmirYassin/BULK_PUPPETEER-releases/releases/download/v4.4.3/BULK_PUPPETEER_v4.4.3.dmg)
+2. Drag `BULK_PUPPETEER.app` to `/Applications`
+3. Launch the app — on first run, it automatically injects a `bulk-cli` alias into your `~/.zshrc` and `~/.bash_profile`
+4. Restart your terminal (or run `source ~/.zshrc`)
+
+The CLI is available as `bulk-cli` when installed via DMG.
+
+> [!NOTE]
+> **CLI naming:** `swarm-cli` (from source) and `bulk-cli` (from DMG) are the same tool. All examples below use `swarm-cli` — substitute `bulk-cli` if you installed via DMG.
+
 ### From Source
 
 ```bash
@@ -58,18 +70,6 @@ cd BULK_PUPPETEER
 ```
 
 The CLI is available as `swarm-cli` when running from source.
-
-### From DMG (macOS App)
-
-1. Download the latest `.dmg` from [Releases](https://github.com/AmirYassin/BULK_PUPPETEER/releases)
-2. Drag `BULK_PUPPETEER.app` to `/Applications`
-3. Launch the app — on first run, it automatically injects a `bulk-cli` alias into your `~/.zshrc` and `~/.bash_profile`
-4. Restart your terminal (or run `source ~/.zshrc`)
-
-The CLI is available as `bulk-cli` when installed via DMG.
-
-> [!NOTE]
-> **CLI naming:** `swarm-cli` (from source) and `bulk-cli` (from DMG) are the same tool. All examples below use `swarm-cli` — substitute `bulk-cli` if you installed via DMG.
 
 ### Post-Install: Environment Setup
 
@@ -84,17 +84,27 @@ sudo ln -s /opt/homebrew/bin/gemini /usr/local/bin/gemini
 
 Click **"Restart Daemon"** in the Menu Bar after creating symlinks for them to take effect.
 
+### First-Run Setup
+
+After launching the app for the first time, complete these steps from the Menu Bar icon:
+
+1. **Set your WhatsApp number** — Menu Bar > **"Set WhatsApp Number…"** (or set `BP_USER_PHONE` env var before launch). The number is saved to `~/Library/Application Support/BULK_PUPPETEER/.user_jid` and takes effect immediately — no restart required.
+2. **Set your Gemini API key** — Menu Bar > **"Set Gemini API Key…"** (or set `GEMINI_API_KEY` env var). If the key in the environment and the saved file differ, the app will alert you with a fingerprint comparison dialog.
+3. **Check the log file** — all daemon output is written to `~/Library/Application Support/BULK_PUPPETEER/server.log`.
+
+All writable runtime state (SQLite database, session token, agent profiles) is stored in `~/Library/Application Support/BULK_PUPPETEER/`.
+
 ### Build macOS App (DMG)
 
 ```bash
-# Dev build (fast, no LTO)
-./build_release.sh
+# Dev build (LTO disabled, Nuitka cache enabled — fast iteration)
+./build_release_cached.sh
 
 # Production build (full LTO + notarization)
 PRODUCTION=1 ./build_release.sh
 ```
 
-Output: `dist/BULK_PUPPETEER_v3.8.0.dmg`
+Output: `dist/BULK_PUPPETEER_v4.4.3.dmg`
 
 ### Run Tests
 
@@ -217,6 +227,16 @@ swarm-cli server-logs --tail 200
 ```
 
 ---
+
+## What's New in v4.4.3
+
+- **Chat history preservation** — the AI remembers conversation context within a session. History survives crash restarts automatically. Switching models clears the history to avoid cross-model context bleed.
+- **Orchestrator agent spawning** — the `veteran-wa-orchestrator` swarm profile now ships with a full guide for spawning Gemini and Claude sub-agents from within an orchestration session.
+- **User Identity (WhatsApp number)** — set your phone number via Menu Bar > **"Set WhatsApp Number…"**. Saved to `~/Library/Application Support/BULK_PUPPETEER/.user_jid`, active immediately in-process with no restart required. Also configurable via the `BP_USER_PHONE` env var.
+- **SSL certificate fix for .app bundle** — `paths.py` monkey-patches `certifi` at startup so that `httpx` and `google-genai` resolve SSL correctly after installation from DMG, where the system Python cert bundle is not available.
+- **Gemini API key mismatch detection** — if the `GEMINI_API_KEY` env var and the saved key file contain different keys, a tray dialog appears with a fingerprint comparison so you can resolve the conflict before the daemon starts making API calls.
+- **WhatsApp bridge auth state machine** — bridge authentication is now driven by stdout parsing against a well-defined state machine, replacing the previous HTTP polling approach that produced false-positive auth failures.
+- **Unified writable state directory** — SQLite database, session token, and agent profiles all live under `~/Library/Application Support/BULK_PUPPETEER/`, consistent with macOS sandboxing conventions.
 
 ## What's New in v4.0.0 (The SOTA iTerm & Rate-Limit Upgrade)
 
@@ -424,6 +444,8 @@ swarm-cli status --json
 The daemon integrates with macOS WindowServer via AppKit:
 - **Pause/Resume All** — global task controls
 - **Copy Session Token** — copies to clipboard with native notification
+- **Set WhatsApp Number…** — saves your phone number to `.user_jid`; takes effect immediately, no restart needed
+- **Set Gemini API Key…** — stores your API key; detects mismatches between env var and saved file
 - **Restart Daemon** — clean `os.execv` process replacement
 
 ### Web Dashboard
@@ -449,6 +471,7 @@ src/bulk_puppeteer/core/
 ├── events.py    # EventBus (Observer pattern, decouples I/O from WS)
 ├── tray.py         # macOS Menu Bar (rumps + AppKit)
 ├── react.py        # ReActAgent (LLM-driven Reason+Act loop)
+├── paths.py        # Path resolver + certifi monkey-patch for .app bundle SSL
 ├── exceptions.py   # OrchestratorError → DAGCycleError, TaskExecutionError, PtyAllocationError
 └── constants.py    # Shared constants
 ```
@@ -518,6 +541,18 @@ swarm-cli --port 9090 add BUILD "run the build" --deps LINT,TEST
 - **Cause:** The `.daemon.token` in your working directory doesn't match the daemon's active token, or the file is missing.
 - **Fix:** Run `swarm-cli` from the same directory where the daemon was launched, pass the correct token with `--token`, or set `export SWARM_TOKEN=$(cat .daemon.token)`. Use `--stable-token` on daemon start to reuse the same token across restarts.
 
+### Gemini API Key Mismatch
+
+- **Symptom:** A tray dialog appears on launch comparing two key fingerprints.
+- **Cause:** The `GEMINI_API_KEY` environment variable and the key saved in `~/Library/Application Support/BULK_PUPPETEER/` do not match.
+- **Fix:** Dismiss the dialog and decide which key is authoritative. Remove the env var to use the saved key, or update the saved key via Menu Bar > **"Set Gemini API Key…"**.
+
+### SSL Errors After DMG Install
+
+- **Symptom:** `httpx` or `google-genai` raises SSL certificate verification errors.
+- **Cause:** The `.app` bundle uses a bundled Python that does not have access to the system cert store.
+- **Fix:** This is handled automatically by `paths.py` on startup. If errors persist, ensure you are running the installed `.app` and not a manually invoked Python process.
+
 ### Task Not Found
 
 - **Symptom:** `[ERROR] Failed to fetch logs for 'xyz'` (empty or 404)
@@ -541,4 +576,5 @@ Copyright (c) 2026 Amir Yassin. All rights reserved.
 - [Action]: Replaced abbreviated REST API table with complete accurate endpoint list matching all routes registered in api.py (15 endpoints). (v2026-04-01)
 - [Role]: Developer (Claude)
 - [Action]: v3.8.0 — Updated all documentation for 9 peer review friction points: DORMANT state, --run flag, hot-resize concurrency, SWARM_TOKEN, --stable-token, exit code hints, PTY EIO, shell escaping. Added What's New v3.8.0 section. (v2026-04-01)
+- [Action]: v4.4.3 — Updated version header, DMG filename, download URL; added What's New v4.4.3 section (chat history, agent spawning, user identity, SSL fix, API key mismatch, WA auth state machine, unified state dir); added First-Run Setup section; expanded Menu Bar UI list; updated build commands to build_release_cached.sh / PRODUCTION=1 build_release.sh; added paths.py to architecture tree; added Gemini API key mismatch and SSL troubleshooting entries. (v2026-04-10)
 ```
