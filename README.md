@@ -763,12 +763,20 @@ The daemon integrates with macOS WindowServer via AppKit. Every action is availa
 
 Visit `http://127.0.0.1:8080` after launching the daemon.
 
+![Web Dashboard — Task Grid](docs/assets/dashboard_tasks.png)
+
+*Task grid with active, dormant, blocked, and completed agents — tag filter bar shown at top*
+
 - **Task Grid** — Live status cards with FSM state badges; click any card to open the PTY terminal
 - **Tag Filter Bar** — Appears when tasks have tags; click a tag to filter the grid
 - **Command Palette** — `/` shortcut for global actions (pause swarm, kill all, set workers)
 - **PTY Terminal** — Full `xterm-256color` TrueColor streaming with SIGWINCH resize support
 - **Real-time Updates** — WebSocket multiplexes output, resize events, and status changes
 - **3D Logo** — Interactive physics-based marionette rendered in WebGL
+
+![PTY Console — Interactive Mode](docs/assets/pty_console.png)
+
+*PTY terminal modal — click any task card to stream its live output*
 
 ---
 
