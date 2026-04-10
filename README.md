@@ -21,6 +21,7 @@
 - [Security Architecture](#security-architecture)
 - [API Reference](#api-reference)
 - [CLI Reference](#cli-reference)
+- [WhatsApp Bridge Integration](#whatsapp-bridge-integration)
 - [User Interface](#user-interface)
 - [Architecture](#architecture)
 - [CI/CD & Headless Mode](#cicd--headless-mode)
@@ -37,6 +38,7 @@ The system provides:
 - A **native macOS Menu Bar app** (AppKit) for host-level management
 - An **E2EE Command Line Interface** for task orchestration
 - A **Web Dashboard** with real-time PTY streaming and a command palette
+- A **WhatsApp Bridge** — route messages to a persistent Gemini AI orchestrator that can spawn and manage sub-agents via natural language
 - An interactive **physics-based 3D logo** rendered via Three.js
 
 ---
@@ -46,7 +48,7 @@ The system provides:
 ### Prerequisites
 
 - macOS 13+ (Apple Silicon)
-- Python 3.11+
+- Python 3.9+
 - Xcode Command Line Tools (`xcode-select --install`)
 
 ### From DMG (macOS App)
@@ -437,6 +439,85 @@ swarm-cli status --json
 
 ---
 
+## WhatsApp Bridge Integration
+
+BULK_PUPPETEER includes an optional WhatsApp bridge that routes your inbound messages to a persistent Gemini AI orchestrator. Send a message to yourself on WhatsApp and the AI responds — it can spawn sub-agents, run shell tasks, manage the DAG, and report back, all from your phone.
+
+### How It Works
+
+```
+Your WhatsApp → Bridge (Go binary) → BULK_PUPPETEER daemon → Gemini AI (veteran-wa-orchestrator)
+                                                            ↓
+                                              Sub-agents (gemini / claude / aider)
+                                                            ↓
+                                              WA reply → Your WhatsApp
+```
+
+### Setup
+
+**Step 1 — Set your phone number** (First-Run Setup if not done already)
+
+Menu Bar > **"Set WhatsApp Number…"** — enter your number with country code (e.g. `+15551234567`).
+
+**Step 2 — Set your Gemini API key**
+
+Menu Bar > **"Set Gemini API Key…"** — get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+
+**Step 3 — Start the bridge and link your account**
+
+```bash
+# Via the REST API (or use the Web Dashboard)
+TOKEN=$(cat ~/Library/Application\ Support/BULK_PUPPETEER/.daemon.token)
+curl -X POST -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/api/wa/start
+```
+
+Then open the QR page in your browser:
+
+```
+http://127.0.0.1:8080/wa/qr
+```
+
+Scan the QR code with WhatsApp on your phone (**Settings → Linked Devices → Link a Device**).
+
+**Step 4 — Send a message to yourself**
+
+Open WhatsApp, find your own contact ("You" or your phone number), and send any message. The AI will respond.
+
+### Chat History
+
+The orchestrator AI remembers your conversation within a session (up to 40 turns). History is automatically preserved across crash restarts. If you switch the AI model (`/model <name>`), history is cleared for a clean start.
+
+### Supported Commands
+
+| Command | Description |
+|---------|-------------|
+| `status` / `s` | Show swarm status and active tasks |
+| `list` / `ls` | List all tasks with their states |
+| `pause` | Pause the entire swarm |
+| `resume` | Resume the swarm |
+| `/task add <cmd>` | Spawn a new shell task |
+| `/task kill <id>` | Kill a task |
+| `/task resume <id>` | Resume a dormant/killed task |
+| `/task delete <id>` | Remove a task |
+| `/task logs <id>` | Fetch task output |
+| `/task stdin <id> <text>` | Send text to a task's stdin |
+| `kill all` / `kill everything` | Kill all running tasks (prompts for confirmation) |
+| `yes` / `no` | Confirm or cancel a pending kill-all |
+| `help` / `?` | Show command reference |
+| `history` / `log` | Show recent orchestrator activity |
+| `/model <name>` | Switch AI model (e.g. `/model gemini-2.5-flash`) |
+| Any free-form text | Routes to the Gemini AI orchestrator |
+
+### Spawning Sub-Agents from WhatsApp
+
+The AI can spawn Gemini and Claude sub-agents on your behalf. Just ask in plain language:
+
+> *"Spawn a Gemini Pro agent to audit the latest logs and report back"*
+
+The AI uses `swarm-cli` internally to create DAG tasks with the correct model, profile, and dependencies. Results are written to files and summarised in the WhatsApp reply.
+
+---
+
 ## User Interface
 
 ### macOS Menu Bar
@@ -567,14 +648,9 @@ Copyright (c) 2026 Amir Yassin. All rights reserved.
 
 ---
 
-```
 >>>>>CHANGES<<<<<
-- [Role]: Researcher/Doc Auditor
-- [Action]: Fixed Quick Start resume curl — changed PUT /api/tasks/{id}?action=resume to POST /api/tasks/resume/{id} to match actual api.py route. (v2026-04-01)
-- [Action]: Fixed FSM state diagram — removed fictional WAITING state; correct states are BLOCKED, QUEUED, IN_PROGRESS, COMPLETED, FAILED, KILLED per fsm.py. (v2026-04-01)
-- [Action]: Expanded Security Architecture section — added CORS restriction to localhost note, noted bearer token is not logged. (v2026-04-01)
-- [Action]: Replaced abbreviated REST API table with complete accurate endpoint list matching all routes registered in api.py (15 endpoints). (v2026-04-01)
-- [Role]: Developer (Claude)
-- [Action]: v3.8.0 — Updated all documentation for 9 peer review friction points: DORMANT state, --run flag, hot-resize concurrency, SWARM_TOKEN, --stable-token, exit code hints, PTY EIO, shell escaping. Added What's New v3.8.0 section. (v2026-04-01)
-- [Action]: v4.4.3 — Updated version header, DMG filename, download URL; added What's New v4.4.3 section (chat history, agent spawning, user identity, SSL fix, API key mismatch, WA auth state machine, unified state dir); added First-Run Setup section; expanded Menu Bar UI list; updated build commands to build_release_cached.sh / PRODUCTION=1 build_release.sh; added paths.py to architecture tree; added Gemini API key mismatch and SSL troubleshooting entries. (v2026-04-10)
-```
+- [Role]: Researcher/Doc Auditor — Fixed Quick Start resume curl, FSM state diagram, Security Architecture, REST API table. (v2026-04-01)
+- [Role]: Developer (Claude) — v3.8.0 doc pass: DORMANT state, --run, hot-resize, SWARM_TOKEN, --stable-token, exit code hints, PTY EIO, shell escaping. (v2026-04-01)
+- [Role]: Developer (Claude) — v4.4.3 doc pass: version/DMG update, What's New v4.4.3, First-Run Setup, Menu Bar items, build commands, paths.py, troubleshooting entries. (v2026-04-10)
+- [Role]: Developer (Claude) — v4.4.3 final pass: fixed Python 3.11+ → 3.9+; added WhatsApp Bridge Integration section (setup, QR linking, command table, sub-agent spawning, chat history note); added WA to ToC and feature list. (v2026-04-10)
+
