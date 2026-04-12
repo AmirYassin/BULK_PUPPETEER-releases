@@ -33,15 +33,23 @@
 
 ## What is BULK_PUPPETEER?
 
-**BULK_PUPPETEER** is a framework-agnostic task orchestration daemon designed for macOS Apple Silicon. It runs as a background FastAPI service, managing concurrent shell tasks defined within Directed Acyclic Graphs (DAGs).
+Most AI agent frameworks give you a loop. BULK_PUPPETEER gives you a DAG.
 
-The system provides:
-- A **native macOS Menu Bar app** (AppKit) for host-level management
-- An **E2EE Command Line Interface** for task orchestration
-- A **Web Dashboard** with real-time PTY streaming and a command palette
-- A **WhatsApp Bridge** — route messages to a persistent Gemini AI orchestrator that can spawn and manage sub-agents via natural language
-- **Named multi-agent Teams** — logical groups of agents that can be started/stopped as a unit from WhatsApp or the API
-- An interactive **physics-based 3D logo** rendered via Three.js
+Chain Claude, Gemini, Aider, and raw shell commands into dependency graphs that execute concurrently, stream live PTY output to your browser, and respond to commands from WhatsApp. Runs as a native macOS daemon with a menu bar app. No Docker. No cloud. Just your machine.
+
+<p align="center">
+  <img src="docs/assets/logo_animated.gif" alt="BULK_PUPPETEER Logo" width="300">
+</p>
+
+<img src="docs/assets/ss_dashboard.png" alt="BULK_PUPPETEER Dashboard" width="100%">
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/assets/ss_pty.png" alt="Live PTY Streaming" width="100%"><br/><sub><b>Live PTY Streaming</b></sub></td>
+    <td width="33%"><img src="docs/assets/ss_tray.png" alt="macOS Menu Bar" width="100%"><br/><sub><b>Native macOS Menu Bar</b></sub></td>
+    <td width="33%"><img src="docs/assets/ss_whatsapp.png" alt="WhatsApp Control" width="100%"><br/><sub><b>WhatsApp Control</b></sub></td>
+  </tr>
+</table>
 
 ---
 
