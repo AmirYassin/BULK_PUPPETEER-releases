@@ -49,7 +49,7 @@
 ---
 
 <p align="center">
-  <img src="docs/assets/reel_square.gif" alt="BULK_PUPPETEER Demo" width="480">
+  <video src="https://github.com/user-attachments/assets/38e5324f-8fc8-4197-ba39-adb64eb42872" controls width="480"></video>
 </p>
 
 > [!CAUTION]
