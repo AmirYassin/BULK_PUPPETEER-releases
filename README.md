@@ -22,10 +22,6 @@
   watch the output stream live. <strong>All from your phone.</strong>
 </p>
 
-<p align="center">
-  <img src="docs/assets/logo_animated.gif" alt="BULK_PUPPETEER Logo" width="300">
-</p>
-
 <img src="docs/assets/ss_dashboard.png" alt="BULK_PUPPETEER Dashboard" width="100%">
 
 <table>
