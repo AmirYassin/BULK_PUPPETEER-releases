@@ -34,11 +34,6 @@
 
 ---
 
-> [!CAUTION]
-> **SPAWNED TASKS START IN DORMANT STATE — RESUME TO ACTIVATE!**
-
----
-
 ## Table of Contents
 
 - [What is BULK_PUPPETEER?](#what-is-bulk_puppeteer)
@@ -60,6 +55,11 @@
 ## What is BULK_PUPPETEER?
 
 **BULK_PUPPETEER** is a framework-agnostic task orchestration daemon designed for macOS Apple Silicon. It runs as a background FastAPI service, managing concurrent shell tasks defined within Directed Acyclic Graphs (DAGs).
+
+---
+
+ > [!CAUTION]
+> **SPAWNED TASKS START IN DORMANT STATE — RESUME TO ACTIVATE!**
 
 ---
 
