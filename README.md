@@ -49,7 +49,7 @@
 ---
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/38e5324f-8fc8-4197-ba39-adb64eb42872" controls width="480"></video>
+  <video src="https://github.com/user-attachments/assets/4814fe1d-6da8-4ad7-b915-d5b045756bed" controls width="480"></video>
 </p>
 
 > [!CAUTION]
