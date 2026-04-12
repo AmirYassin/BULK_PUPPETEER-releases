@@ -79,9 +79,6 @@
 
 The CLI is available as `bulk-cli` when installed via DMG.
 
-> [!NOTE]
-> **CLI naming:** `swarm-cli` (from source) and `bulk-cli` (from DMG) are the same tool. All examples below use `swarm-cli` — substitute `bulk-cli` if you installed via DMG.
-
 ### First-Run Setup
 
 After launching the app for the first time, complete these steps from the Menu Bar icon:
