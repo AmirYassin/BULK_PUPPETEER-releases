@@ -51,8 +51,6 @@
 - [CLI Reference](#cli-reference)
 - [WhatsApp Bridge Integration](#whatsapp-bridge-integration)
 - [User Interface](#user-interface)
-- [Architecture](#architecture)
-- [CI/CD & Headless Mode](#cicd--headless-mode)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 
@@ -84,16 +82,6 @@ The CLI is available as `bulk-cli` when installed via DMG.
 > [!NOTE]
 > **CLI naming:** `swarm-cli` (from source) and `bulk-cli` (from DMG) are the same tool. All examples below use `swarm-cli` — substitute `bulk-cli` if you installed via DMG.
 
-### From Source
-
-```bash
-git clone https://github.com/AmirYassin/BULK_PUPPETEER.git
-cd BULK_PUPPETEER
-/usr/bin/pip3 install -e ".[dev]"
-```
-
-The CLI is available as `swarm-cli` when running from source.
-
 ### Post-Install: Environment Setup
 
 > [!WARNING]
@@ -117,20 +105,6 @@ After launching the app for the first time, complete these steps from the Menu B
 
 All writable runtime state (SQLite database, session token, agent profiles) is stored in `~/Library/Application Support/BULK_PUPPETEER/`.
 
-### Run Tests
-
-```bash
-# Full suite (backend + Playwright E2E)
-/usr/bin/python3 run_tests.py
-
-# Backend only
-/usr/bin/python3 -m pytest -v -p no:playwright -n auto --timeout=40 \
-  --ignore=TESTS/AUTO_UI --ignore=TESTS/backend/test_macos_integration.py TESTS/backend/
-
-# E2E only
-/usr/bin/python3 -m pytest -v -n auto --timeout=40 TESTS/AUTO_UI/
-```
-
 ---
 
 ## Quick Start
@@ -138,10 +112,6 @@ All writable runtime state (SQLite database, session token, agent profiles) is s
 ### 1. Launch the App
 
 ```bash
-# From source
-./start_daemon.sh [manifest_path] [port]
-
-# Or from /Applications (if installed via DMG)
 open -a BULK_PUPPETEER
 ```
 
@@ -233,9 +203,7 @@ swarm-cli server-logs --tail 200
 
 ### 6. Stop the Daemon
 
-```bash
-./stop_daemon.sh
-```
+Use Menu Bar > **Quit Daemon** to stop gracefully.
 
 ---
 
@@ -244,38 +212,8 @@ swarm-cli server-logs --tail 200
 - **Chat history preservation** — the AI remembers conversation context within a session. History survives crash restarts automatically. Switching models clears the history to avoid cross-model context bleed.
 - **Orchestrator agent spawning** — the `veteran-wa-orchestrator` swarm profile now ships with a full guide for spawning Gemini and Claude sub-agents from within an orchestration session.
 - **User Identity (WhatsApp number)** — set your phone number via Menu Bar > **"Set WhatsApp Number…"**. Saved to `~/Library/Application Support/BULK_PUPPETEER/.user_jid`, active immediately in-process with no restart required. Also configurable via the `BP_USER_PHONE` env var.
-- **SSL certificate fix for .app bundle** — `paths.py` monkey-patches `certifi` at startup so that `httpx` and `google-genai` resolve SSL correctly after installation from DMG, where the system Python cert bundle is not available.
 - **Gemini API key mismatch detection** — if the `GEMINI_API_KEY` env var and the saved key file contain different keys, a tray dialog appears with a fingerprint comparison so you can resolve the conflict before the daemon starts making API calls.
-- **WhatsApp bridge auth state machine** — bridge authentication is now driven by stdout parsing against a well-defined state machine, replacing the previous HTTP polling approach that produced false-positive auth failures.
 - **Unified writable state directory** — SQLite database, session token, and agent profiles all live under `~/Library/Application Support/BULK_PUPPETEER/`, consistent with macOS sandboxing conventions.
-
-## What's New in v4.0.0 (The SOTA iTerm & Rate-Limit Upgrade)
-
-- **iTerm-in-Browser UI:** Complete aesthetic overhaul of the web terminal. The console now features a strict native monospace stack, dark-mode 12px rounded modal styling, and rigorous scroll-lock tolerances that replicate a native macOS iTerm2 experience directly inside the browser.
-- **Concurrency Burst Mitigation (Execution Jitter):** The backend Execution Engine now employs a mathematically randomized `1.0-8.0s` startup jitter. When unleashing a swarm of agents simultaneously, this architectural mechanism cleanly staggers subprocess initialization, mathematically circumventing strict LLM API Request-Per-Second (429) rate limits.
-- **JSON WebSocket Multiplexing:** Refactored the frontend-to-backend pipeline to use a scalable JSON message protocol (`{"type": "input", "data": "..."}` and `{"type": "resize"}`), breaking away from legacy raw-text buffering.
-- **SIGWINCH Window Resizing:** The terminal viewport now actively synchronizes its dimensions with the underlying macOS kernel. Resizing the browser actively redraws terminal apps (like `top` or `vim`) in real-time.
-- **TrueColor (256) PTY Injection:** The engine now strictly enforces `TERM=xterm-256color` and explicitly allocates a master/slave pseudo-terminal, ensuring that high-fidelity UI apps like the Gemini CLI render flawlessly.
-
-## What's New in v3.8.0
-
-- **DORMANT state** — dynamically added tasks now start in `DORMANT` instead of overloading `KILLED`. Clear semantic distinction between "not yet started" and "user terminated"
-- **`--run` flag** — `swarm-cli add <id> <prompt> --run` starts the task immediately, skipping DORMANT state
-- **Hot-resize concurrency** — `set-workers` swaps the semaphore in-place. Running tasks are no longer killed and the manifest is no longer reloaded
-- **Shell escaping hardening** — `_escape_for_shell()` now handles `!` (bash history expansion), `\n`, `\r`, and null bytes
-- **PTY EIO resilience** — graceful handling of `OSError(EIO)` when the PTY slave closes before the read loop
-- **Exit code hints** — failed tasks with exit code 127 or 126 now include diagnostic hints ("command not found", "permission denied") in their log buffer
-- **`SWARM_TOKEN` env var** — CLI checks `SWARM_TOKEN` environment variable before falling back to `.daemon.token` file
-- **`--stable-token`** — daemon flag to reuse existing `.daemon.token` across restarts (avoids breaking existing agent connections)
-- **DORMANT badge** — Web Dashboard renders DORMANT tasks with a teal status badge
-
-### What's New in v3.7.0
-
-- **Full CLI coverage** — all 16 REST API endpoints now have `swarm-cli` commands (was 8)
-- **`swarm-cli resume`** — resume dormant/killed tasks from the CLI (previously dashboard-only)
-- **Multi-model support** — `--model` and `--model-variant` flags on `swarm-cli add` (gemini, claude, aider, raw)
-- **8 new commands** — `kill-all`, `pause`, `resume-swarm`, `resume-all`, `stdin`, `edit`, `delete`, `server-logs`
-- **Security hardening** — expanded model variant validation, strict Claude allowlist
 
 ---
 
@@ -416,18 +354,6 @@ WebSocket connections authenticate via query parameter: `?token=<token>`.
 
 The `/whatsapp/webhook` inbound endpoint requires either a valid Bearer token **or** a request originating from localhost (`verify_local_or_token`). Unauthenticated webhook posts from external addresses are rejected with HTTP 401.
 
-### Shell Injection Prevention (`_validate_command`)
-
-Before executing any task, `_validate_command()` scans the command string for dangerous shell metacharacters: `;`, `|`, `&`, `$`, `` ` ``, `\n`, `\r`. Commands containing any of these characters are rejected with a `ValueError` before a subprocess is spawned. This applies to both `StandardShellTask` and `PtyInteractiveTask`.
-
-### Workspace Root Path Validation
-
-The `SwarmConfig.workspace_root` field defines a spatial security boundary. When a task's `cwd` is set, the API resolves both the workspace root and the target path via `os.path.realpath()` and verifies that the target is inside the workspace using `os.path.commonpath()`. Symlink-based escape attempts are caught and rejected with HTTP 400 (`Spatial Escape Detected`).
-
-### Orchestrator Preflight Checks
-
-Before the orchestrator's `poll_loop` activates, `run_agent_settings_preflight()` validates that `AgentSettings.email` and `AgentSettings.phone` are present and well-formed. On success it sets `SwarmConfig.orchestrator_ready = True`. The macOS Menu Bar settings dialog shows a live `✓` / `○` indicator reflecting this state.
-
 ---
 
 ## Configuration
@@ -439,16 +365,10 @@ The daemon accepts the following `SwarmConfig` fields, settable via CLI flags or
 | `port` | `int` | `8080` | API bind port |
 | `host` | `str` | `127.0.0.1` | API bind address |
 | `concurrency` | `int` | `3` | Worker pool capacity (hot-resizable via `set-workers`) |
-| `manifest_path` | `str` | `sample_tasks.json` | Path to the task JSON manifest |
 | `log_file` | `str` | `server.log` | Path to the primary diagnostic log |
-| `token` | `str` | _(generated)_ | Bearer token for authentication; auto-generated by `start_daemon.sh` |
+| `token` | `str` | _(generated)_ | Bearer token for authentication; auto-generated on launch |
 | `verbose` | `bool` | `False` | Enable debug-level logging |
-| `enable_state_cache` | `bool` | `True` | Enable local state caching |
-| `state_cache_file` | `str` | `.com.apple.xpc.state` | Path to the local state cache file |
 | `workspace_root` | `str` | _(CWD)_ | Safe directory boundary for task execution |
-| `orchestrator_ready` | `bool` | `False` | Set to `True` by preflight checks when email/phone are valid |
-
-**Removed fields (do not use):** `enable_remote_optimization`, `garbage_collector`. These were removed in v4.x and are no longer accepted.
 
 ### Log File Location
 
@@ -495,7 +415,6 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 | `DELETE` | `/api/tasks/{id}` | Token | Purge a dormant task from memory |
 | `GET` | `/api/tasks/{id}/logs` | Token | Retrieve the 2000-line output buffer for a task |
 | `GET` | `/api/server_logs` | Token | Tail the backend diagnostic log file |
-| `GET` | `/api/test_files` | Token | List all test files |
 | `GET` | `/api/wa/status` | None | WhatsApp bridge status |
 | `POST` | `/api/wa/start` | Token | Start WhatsApp bridge |
 | `POST` | `/api/wa/stop` | Token | Stop WhatsApp bridge |
@@ -530,40 +449,6 @@ All endpoints require: `Authorization: Bearer <64_char_hex_token>`
 ---
 
 ## CLI Reference
-
-### Daemon (`bulk-puppeteer`)
-
-The daemon is started via `./start_daemon.sh` or directly as a Python module. All flags are optional; defaults are shown below.
-
-```
-bulk-puppeteer [OPTIONS]
-```
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--manifest` | str | `sample_tasks.json` | Path to the JSON task manifest loaded at startup. |
-| `--port` | int | `8080` | TCP port for the API server. |
-| `--workers` | int | `3` | Maximum number of concurrently executing tasks. |
-| `--token` | str | _(generated)_ | Bearer token for API auth. Auto-generated and written to `.daemon.token` if omitted. |
-| `--verbose` | flag | `false` | Enable DEBUG-level logging. |
-| `--headless` | flag | `false` | Run without the macOS AppKit Menu Bar. Required for CI/CD and Linux environments. |
-| `--stable-token` | flag | `false` | Reuse the existing `.daemon.token` if present instead of generating a new one on each start. |
-
-**Example invocations:**
-
-```bash
-# Default (Menu Bar + API on port 8080)
-./start_daemon.sh
-
-# Headless mode (CI/CD, no AppKit)
-python3 -m bulk_puppeteer --headless --port 8080
-
-# Custom manifest, more workers, reuse token
-python3 -m bulk_puppeteer --manifest tasks.json --workers 8 --stable-token
-
-# Verbose debug logging
-python3 -m bulk_puppeteer --verbose --headless
-```
 
 ### Swarm CLI (`swarm-cli` / `bulk-cli`)
 
@@ -691,10 +576,6 @@ curl http://127.0.0.1:8080/api/wa/status
 
 The orchestrator AI remembers your conversation within a session (up to 40 turns). History is automatically preserved across crash restarts. If you switch the AI model (`/model <name>`), history is cleared for a clean start.
 
-### Dead-Letter Queue
-
-If the bridge is unreachable when the orchestrator tries to send a reply, the outbound message is written to a `dead_letter/` directory under the data directory rather than being silently dropped. Messages are retried on the next successful bridge reconnection.
-
 ### Spawning Sub-Agents from WhatsApp
 
 The AI can spawn Gemini and Claude sub-agents on your behalf. Just ask in plain language:
@@ -787,56 +668,6 @@ Visit `http://127.0.0.1:8080` after launching the daemon.
 
 ---
 
-## Architecture
-
-```
-src/bulk_puppeteer/core/
-├── engine.py       # ExecutionEngine, TaskManager, polymorphic task hierarchy
-├── api.py          # FastAPI app factory, REST + WebSocket, ASGI middleware
-├── models.py       # Pydantic schemas (TaskDef, TaskState, TaskStatus)
-├── config.py       # Immutable SwarmConfig (single source of truth)
-├── fsm.py          # TaskStateMachine (legal transition adjacency list)
-├── dag.py          # SwarmDAG (Kahn's Algorithm cycle detection)
-├── events.py       # EventBus (Observer pattern, decouples I/O from WS)
-├── tray.py         # macOS Menu Bar (rumps + AppKit)
-├── react.py        # ReActAgent (LLM-driven Reason+Act loop)
-├── paths.py        # Path resolver + certifi monkey-patch for .app bundle SSL
-├── exceptions.py   # OrchestratorError → DAGCycleError, TaskExecutionError, PtyAllocationError
-└── constants.py    # Shared constants
-```
-
-### Execution Flow
-
-1. `__main__.py` parses args, builds `SwarmConfig`, calls `create_app(config)`, starts Uvicorn
-2. `ExecutionEngine.load_manifest()` parses JSON manifest into `AbstractTask` objects, registers in `SwarmDAG`
-3. `ExecutionEngine.start_all()` spawns one `asyncio.Task` per job
-4. Each task: waits for DAG deps, acquires semaphore, executes via PTY or standard shell
-5. All I/O routed through `EventBus` to WebSocket subscribers
-6. State transitions validated by `TaskStateMachine` — illegal jumps raise exceptions
-
-### Task Types
-
-- **`PtyInteractiveTask`** — OS-level PTY allocation for TTY-aware tools (vim, gemini, etc.)
-- **`StandardShellTask`** — `asyncio.create_subprocess_shell` with pipes (when `use_pty: false`)
-
----
-
-## CI/CD & Headless Mode
-
-For CI/CD pipelines and environments without a display, bypass the Menu Bar integration:
-
-```bash
-# Start daemon headless (no AppKit, no Window Server required)
-nohup python3 -m bulk_puppeteer --headless --port 9090 > daemon.log 2>&1 &
-```
-
-Then point the CLI to the custom port:
-
-```bash
-swarm-cli --port 9090 status
-swarm-cli --port 9090 add BUILD "run the build" --deps LINT,TEST
-```
-
 ---
 
 ## Troubleshooting
@@ -862,13 +693,13 @@ swarm-cli --port 9090 add BUILD "run the build" --deps LINT,TEST
 
 - **Symptom:** `[ERROR] API Request Failed: None`
 - **Cause:** The daemon is not running on the expected port.
-- **Fix:** Ensure you launched the `.app` or ran `./start_daemon.sh`. Verify with `swarm-cli --port <PORT> status`.
+- **Fix:** Ensure the `.app` is running. Verify with `swarm-cli --port <PORT> status`.
 
 ### Authentication Failure
 
 - **Symptom:** `[ERROR] API Request Failed: Unauthorized`
 - **Cause:** The `.daemon.token` in your working directory doesn't match the daemon's active token, or the file is missing.
-- **Fix:** Run `swarm-cli` from the same directory where the daemon was launched, pass the correct token with `--token`, or set `export SWARM_TOKEN=$(cat .daemon.token)`. Use `--stable-token` on daemon start to reuse the same token across restarts.
+- **Fix:** Run `swarm-cli` from the same directory where the daemon was launched, pass the correct token with `--token`, or set `export SWARM_TOKEN=$(cat .daemon.token)`.
 
 ### Gemini API Key Mismatch
 
