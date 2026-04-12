@@ -52,6 +52,7 @@
 - [WhatsApp Bridge Integration](#whatsapp-bridge-integration)
 - [User Interface](#user-interface)
 - [Troubleshooting](#troubleshooting)
+- [What's New in v4.4.3](#whats-new-in-v443)
 - [License](#license)
 
 ---
@@ -188,16 +189,6 @@ swarm-cli server-logs --tail 200
 ### 6. Stop the Daemon
 
 Use Menu Bar > **Quit Daemon** to stop gracefully.
-
----
-
-## What's New in v4.4.3
-
-- **Chat history preservation** — the AI remembers conversation context within a session. History survives crash restarts automatically. Switching models clears the history to avoid cross-model context bleed.
-- **Orchestrator agent spawning** — the `veteran-wa-orchestrator` swarm profile now ships with a full guide for spawning Gemini and Claude sub-agents from within an orchestration session.
-- **User Identity (WhatsApp number)** — set your phone number via Menu Bar > **"Set WhatsApp Number…"**. Saved to `~/Library/Application Support/BULK_PUPPETEER/.user_jid`, active immediately in-process with no restart required. Also configurable via the `BP_USER_PHONE` env var.
-- **Gemini API key mismatch detection** — if the `GEMINI_API_KEY` env var and the saved key file contain different keys, a tray dialog appears with a fingerprint comparison so you can resolve the conflict before the daemon starts making API calls.
-- **Unified writable state directory** — SQLite database, session token, and agent profiles all live under `~/Library/Application Support/BULK_PUPPETEER/`, consistent with macOS sandboxing conventions.
 
 ---
 
@@ -718,6 +709,16 @@ Visit `http://127.0.0.1:8080` after launching the daemon.
 - **Symptom:** Menu Bar Settings dialog shows `○` next to orchestrator readiness.
 - **Cause:** `AgentSettings.email` or `AgentSettings.phone` is missing or malformed.
 - **Fix:** Open Menu Bar > **Settings**, fill in a valid email and phone, then click Save.
+
+---
+
+## What's New in v4.4.3
+
+- **Chat history preservation** — the AI remembers conversation context within a session. History survives crash restarts automatically. Switching models clears the history to avoid cross-model context bleed.
+- **Orchestrator agent spawning** — the `veteran-wa-orchestrator` swarm profile now ships with a full guide for spawning Gemini and Claude sub-agents from within an orchestration session.
+- **User Identity (WhatsApp number)** — set your phone number via Menu Bar > **"Set WhatsApp Number…"**. Saved to `~/Library/Application Support/BULK_PUPPETEER/.user_jid`, active immediately in-process with no restart required. Also configurable via the `BP_USER_PHONE` env var.
+- **Gemini API key mismatch detection** — if the `GEMINI_API_KEY` env var and the saved key file contain different keys, a tray dialog appears with a fingerprint comparison so you can resolve the conflict before the daemon starts making API calls.
+- **Unified writable state directory** — SQLite database, session token, and agent profiles all live under `~/Library/Application Support/BULK_PUPPETEER/`, consistent with macOS sandboxing conventions.
 
 ---
 
