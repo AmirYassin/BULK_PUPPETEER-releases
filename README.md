@@ -7,6 +7,37 @@
 
 ---
 
+<p align="center">
+  <strong>Chain AI agents and raw shell commands into dependency graphs</strong><br/>
+  that execute concurrently, stream live PTY output to your browser,<br/>
+  and respond to commands from WhatsApp.<br/><br/>
+  <strong>No Docker. No cloud. Just your machine.</strong>
+</p>
+
+<p align="center">
+  A persistent <strong>Orchestrator</strong> runs silently in the background — managing multiple <strong>Teams</strong>,<br/>
+  each a named group of agents working in parallel on their assigned <strong>Tasks</strong>.<br/>
+  Create, monitor, and edit teams and tasks in real time from the Web Dashboard, CLI,<br/>
+  or directly from <strong>WhatsApp</strong>. Spin up a research team, chain it into a coding team,<br/>
+  watch the output stream live. <strong>All from your phone.</strong>
+</p>
+
+<p align="center">
+  <img src="docs/assets/logo_animated.gif" alt="BULK_PUPPETEER Logo" width="300">
+</p>
+
+<img src="docs/assets/ss_dashboard.png" alt="BULK_PUPPETEER Dashboard" width="100%">
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/assets/ss_pty.png" alt="Live PTY Streaming" width="100%"><br/><sub><b>Live PTY Streaming</b></sub></td>
+    <td width="33%"><img src="docs/assets/ss_tray.png" alt="macOS Menu Bar" width="100%"><br/><sub><b>Native macOS Menu Bar</b></sub></td>
+    <td width="33%"><img src="docs/assets/ss_whatsapp.png" alt="WhatsApp Control" width="100%"><br/><sub><b>WhatsApp Control</b></sub></td>
+  </tr>
+</table>
+
+---
+
 > [!CAUTION]
 > **SPAWNED TASKS START IN DORMANT STATE — RESUME TO ACTIVATE!**
 
@@ -33,23 +64,7 @@
 
 ## What is BULK_PUPPETEER?
 
-Chain AI agents and raw shell commands into dependency graphs that execute concurrently, stream live PTY output to your browser, and respond to commands from WhatsApp. Runs as a native macOS daemon with a menu bar app. No Docker. No cloud. Just your machine.
-
-A persistent **Orchestrator** runs silently in the background, managing multiple **Teams** — each team a named group of agents working in parallel on their assigned **Tasks**. Teams and tasks can be created, monitored, and edited in real time — from the Web Dashboard, the CLI, or directly from **WhatsApp**. Spin up a research team, chain it into a coding team, watch the output stream live. All from your phone.
-
-<p align="center">
-  <img src="docs/assets/logo_animated.gif" alt="BULK_PUPPETEER Logo" width="300">
-</p>
-
-<img src="docs/assets/ss_dashboard.png" alt="BULK_PUPPETEER Dashboard" width="100%">
-
-<table>
-  <tr>
-    <td width="33%"><img src="docs/assets/ss_pty.png" alt="Live PTY Streaming" width="100%"><br/><sub><b>Live PTY Streaming</b></sub></td>
-    <td width="33%"><img src="docs/assets/ss_tray.png" alt="macOS Menu Bar" width="100%"><br/><sub><b>Native macOS Menu Bar</b></sub></td>
-    <td width="33%"><img src="docs/assets/ss_whatsapp.png" alt="WhatsApp Control" width="100%"><br/><sub><b>WhatsApp Control</b></sub></td>
-  </tr>
-</table>
+**BULK_PUPPETEER** is a framework-agnostic task orchestration daemon designed for macOS Apple Silicon. It runs as a background FastAPI service, managing concurrent shell tasks defined within Directed Acyclic Graphs (DAGs).
 
 ---
 
