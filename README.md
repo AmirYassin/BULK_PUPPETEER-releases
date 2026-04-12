@@ -49,7 +49,7 @@
 ---
 
 <p align="center">
-  <video src="docs/assets/reel_square.mp4" autoplay loop muted playsinline width="480"></video>
+  <video src="https://raw.githubusercontent.com/AmirYassin/BULK_PUPPETEER-releases/main/docs/assets/reel_square.mp4" autoplay loop muted playsinline width="480"></video>
 </p>
 
 > [!CAUTION]
