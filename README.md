@@ -8,10 +8,10 @@
 ---
 
 <p align="center">
-  <strong>Chain AI agents and raw shell commands into dependency graphs</strong><br/>
+  <strong>CHAIN AI AGENTS AND RAW SHELL COMMANDS INTO DEPENDENCY GRAPHS</strong><br/>
   that execute concurrently, stream live PTY output to your browser,<br/>
   and respond to commands from WhatsApp.<br/><br/>
-  <strong>No Docker. No cloud. Just your machine.</strong>
+  <strong>NO DOCKER. NO CLOUD. JUST YOUR MACHINE.</strong>
 </p>
 
 <p align="center">
