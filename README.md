@@ -82,19 +82,6 @@ The CLI is available as `bulk-cli` when installed via DMG.
 > [!NOTE]
 > **CLI naming:** `swarm-cli` (from source) and `bulk-cli` (from DMG) are the same tool. All examples below use `swarm-cli` — substitute `bulk-cli` if you installed via DMG.
 
-### Post-Install: Environment Setup
-
-> [!WARNING]
-> **`$PATH` Isolation:** BULK_PUPPETEER runs as a native macOS AppKit daemon and **does not inherit your terminal's `$PATH`** (e.g., `~/.zshrc` or `/opt/homebrew/bin`).
-
-To ensure the Swarm Engine can locate your CLI tools (`gemini`, `python`, `node`, etc.), create system-level symlinks:
-
-```bash
-sudo ln -s /opt/homebrew/bin/gemini /usr/local/bin/gemini
-```
-
-Click **"Restart Daemon"** in the Menu Bar after creating symlinks for them to take effect.
-
 ### First-Run Setup
 
 After launching the app for the first time, complete these steps from the Menu Bar icon:
