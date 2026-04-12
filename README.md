@@ -33,9 +33,9 @@
 
 ## What is BULK_PUPPETEER?
 
-Most AI agent frameworks give you a loop. BULK_PUPPETEER gives you a DAG.
+Chain AI agents and raw shell commands into dependency graphs that execute concurrently, stream live PTY output to your browser, and respond to commands from WhatsApp. Runs as a native macOS daemon with a menu bar app. No Docker. No cloud. Just your machine.
 
-Chain Claude, Gemini, Aider, and raw shell commands into dependency graphs that execute concurrently, stream live PTY output to your browser, and respond to commands from WhatsApp. Runs as a native macOS daemon with a menu bar app. No Docker. No cloud. Just your machine.
+A persistent **Orchestrator** runs silently in the background, managing multiple **Teams** — each team a named group of agents working in parallel on their assigned **Tasks**. Teams and tasks can be created, monitored, and edited in real time — from the Web Dashboard, the CLI, or directly from **WhatsApp**. Spin up a research team, chain it into a coding team, watch the output stream live. All from your phone.
 
 <p align="center">
   <img src="docs/assets/logo_animated.gif" alt="BULK_PUPPETEER Logo" width="300">
