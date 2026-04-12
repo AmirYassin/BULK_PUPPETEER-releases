@@ -117,18 +117,6 @@ After launching the app for the first time, complete these steps from the Menu B
 
 All writable runtime state (SQLite database, session token, agent profiles) is stored in `~/Library/Application Support/BULK_PUPPETEER/`.
 
-### Build macOS App (DMG)
-
-```bash
-# Dev build (LTO disabled, Nuitka cache enabled — fast iteration)
-./build_release_cached.sh
-
-# Production build (full LTO + notarization)
-PRODUCTION=1 ./build_release.sh
-```
-
-Output: `dist/BULK_PUPPETEER_v4.4.3.dmg`
-
 ### Run Tests
 
 ```bash
