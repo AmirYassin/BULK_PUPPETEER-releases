@@ -48,15 +48,9 @@
 
 ---
 
-<img src="docs/assets/ss_dashboard.png" alt="BULK_PUPPETEER Dashboard" width="100%">
-
-<table>
-  <tr>
-    <td width="33%"><img src="docs/assets/ss_pty.png" alt="Live PTY Streaming" width="100%"><br/><sub><b>Live PTY Streaming</b></sub></td>
-    <td width="33%"><img src="docs/assets/ss_tray.png" alt="macOS Menu Bar" width="100%"><br/><sub><b>Native macOS Menu Bar</b></sub></td>
-    <td width="33%"><img src="docs/assets/ss_whatsapp.png" alt="WhatsApp Control" width="100%"><br/><sub><b>WhatsApp Control</b></sub></td>
-  </tr>
-</table>
+<p align="center">
+  <video src="docs/assets/reel_square.mp4" autoplay loop muted playsinline width="480"></video>
+</p>
 
 > [!CAUTION]
 > **SPAWNED TASKS START IN DORMANT STATE — RESUME TO ACTIVATE!**
